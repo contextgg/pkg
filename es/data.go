@@ -42,6 +42,7 @@ type Data interface {
 	LoadUniqueEvents(ctx context.Context, aggregateTypeName string) ([]events.Event, error)
 	LoadEventsByType(ctx context.Context, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error)
 	LoadAllEvents(ctx context.Context) ([]events.Event, error)
+	LoadEvent(ctx context.Context, id string, aggregateTypeName string, version int) (*events.Event, error)
 	LoadEvents(ctx context.Context, id string, aggregateTypeName string, fromVersion int) ([]events.Event, error)
 	SaveEvents(ctx context.Context, events ...events.Event) error
 }

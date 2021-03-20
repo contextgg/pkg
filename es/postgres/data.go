@@ -268,6 +268,32 @@ func (s *data) LoadAllEvents(ctx context.Context) ([]events.Event, error) {
 	}
 	return out, nil
 }
+func (s *data) LoadEvent(ctx context.Context, id string, typeName string, version int) (*events.Event, error) {
+	// Select all users.
+	var evt event
+	if err := s.db.
+		ModelContext(ctx, &evt).
+		Where("event.aggregate_id = ? AND event.aggregate_type = ? AND event.version = ?", id, typeName, version).
+		Order("version").
+		Select(); err != nil {
+		return nil, err
+	}
+
+	data, err := types.UnmarshalByName(evt.Type, evt.Data, s.legacy)
+	if err != nil {
+		return nil, err
+	}
+
+	m := &events.Event{
+		AggregateID:   evt.AggregateID,
+		AggregateType: evt.AggregateType,
+		Version:       evt.Version,
+		Type:          evt.Type,
+		Timestamp:     evt.Timestamp,
+		Data:          data,
+	}
+	return m, nil
+}
 func (s *data) LoadEvents(ctx context.Context, id string, typeName string, fromVersion int) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
