@@ -17,6 +17,8 @@ type Client interface {
 	SetLog(log io.Writer)
 	IsSandbox() bool
 
+	GetBalanceAccounts() (*BalanceAccounts, error)
+
 	GetCapture(captureId string) (*Capture, error)
 
 	GetOrder(orderID string) (*Order, error)

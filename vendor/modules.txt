@@ -34,6 +34,7 @@ github.com/gin-gonic/gin/render
 github.com/go-openapi/analysis
 github.com/go-openapi/analysis/internal
 # github.com/go-openapi/errors v0.19.9
+## explicit
 github.com/go-openapi/errors
 # github.com/go-openapi/jsonpointer v0.19.5
 github.com/go-openapi/jsonpointer
@@ -42,6 +43,7 @@ github.com/go-openapi/jsonreference
 # github.com/go-openapi/loads v0.20.0
 github.com/go-openapi/loads
 # github.com/go-openapi/runtime v0.19.24
+## explicit
 github.com/go-openapi/runtime
 github.com/go-openapi/runtime/client
 github.com/go-openapi/runtime/logger
@@ -54,10 +56,13 @@ github.com/go-openapi/runtime/yamlpc
 # github.com/go-openapi/spec v0.20.0
 github.com/go-openapi/spec
 # github.com/go-openapi/strfmt v0.19.11
+## explicit
 github.com/go-openapi/strfmt
 # github.com/go-openapi/swag v0.19.12
+## explicit
 github.com/go-openapi/swag
 # github.com/go-openapi/validate v0.20.0
+## explicit
 github.com/go-openapi/validate
 # github.com/go-pg/pg/v10 v10.7.4
 ## explicit
@@ -82,6 +87,7 @@ github.com/go-stack/stack
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 github.com/golang/groupcache/lru
 # github.com/golang/protobuf v1.4.3
+## explicit
 github.com/golang/protobuf/internal/gengogrpc
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/protoc-gen-go
@@ -411,6 +417,7 @@ google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/fieldmaskpb
 google.golang.org/protobuf/types/known/timestamppb
+google.golang.org/protobuf/types/known/wrapperspb
 google.golang.org/protobuf/types/pluginpb
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2

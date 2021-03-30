@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
+
+	_ "github.com/contextgg/pkg/pgdb/timestamp"
 )
 
 var (
