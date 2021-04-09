@@ -62,7 +62,9 @@ func NewPostgresData(db pgdb.DB, opts ...*es.DataOpts) es.Data {
 }
 func NewPostgresDataWithLegacy(db pgdb.DB, legacy bool, opts ...*es.DataOpts) es.Data {
 	for _, o := range opts {
-		run(db, o)
+		if err := run(db, o); err != nil {
+			panic(err)
+		}
 	}
 
 	return &data{
