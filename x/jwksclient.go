@@ -10,6 +10,7 @@ import (
 	"github.com/form3tech-oss/jwt-go"
 	"github.com/form3tech-oss/jwt-go/request"
 	client "github.com/ory/kratos-client-go"
+	"github.com/square/go-jose"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -21,14 +22,14 @@ type Claims struct {
 
 // JwksClient interface
 type JwksClient interface {
-	GetSignatureKey(keyId string) (*JSONWebKey, error)
-	GetEncryptionKey(keyId string) (*JSONWebKey, error)
-	GetKey(keyId string, use string) (jwk *JSONWebKey, err error)
+	GetSignatureKey(keyId string) (*jose.JSONWebKey, error)
+	GetEncryptionKey(keyId string) (*jose.JSONWebKey, error)
+	GetKey(keyId string, use string) (jwk *jose.JSONWebKey, err error)
 	ParseFromRequestWithClaims(r *http.Request) (*jwt.Token, error)
 }
 
 type cacheEntry struct {
-	jwk     *JSONWebKey
+	jwk     *jose.JSONWebKey
 	refresh int64
 }
 
@@ -39,15 +40,15 @@ type jwksClient struct {
 	sem     *semaphore.Weighted
 }
 
-func (c *jwksClient) GetSignatureKey(keyId string) (*JSONWebKey, error) {
+func (c *jwksClient) GetSignatureKey(keyId string) (*jose.JSONWebKey, error) {
 	return c.GetKey(keyId, "sig")
 }
 
-func (c *jwksClient) GetEncryptionKey(keyId string) (*JSONWebKey, error) {
+func (c *jwksClient) GetEncryptionKey(keyId string) (*jose.JSONWebKey, error) {
 	return c.GetKey(keyId, "enc")
 }
 
-func (c *jwksClient) GetKey(keyId string, use string) (jwk *JSONWebKey, err error) {
+func (c *jwksClient) GetKey(keyId string, use string) (jwk *jose.JSONWebKey, err error) {
 	val, found := c.cache.Get(keyId)
 	if found {
 		entry := val.(*cacheEntry)
@@ -69,7 +70,7 @@ func (c *jwksClient) ParseFromRequestWithClaims(r *http.Request) (*jwt.Token, er
 	return request.ParseFromRequestWithClaims(r, request.OAuth2Extractor, &Claims{}, c.keyFunc)
 }
 
-func (c *jwksClient) refreshKey(keyId string, use string) (*JSONWebKey, error) {
+func (c *jwksClient) refreshKey(keyId string, use string) (*jose.JSONWebKey, error) {
 	jwk, err := c.fetchJSONWebKey(keyId, use)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (c *jwksClient) refreshKey(keyId string, use string) (*JSONWebKey, error) {
 	return jwk, nil
 }
 
-func (c *jwksClient) save(keyId string, jwk *JSONWebKey) {
+func (c *jwksClient) save(keyId string, jwk *jose.JSONWebKey) {
 	c.cache.Set(keyId, &cacheEntry{
 		jwk:     jwk,
 		refresh: time.Now().Add(c.refresh).Unix(),
@@ -100,7 +101,7 @@ func (c *jwksClient) keyFunc(token *jwt.Token) (interface{}, error) {
 	return k.Key, nil
 }
 
-func (c *jwksClient) fetchJSONWebKey(keyId string, use string) (*JSONWebKey, error) {
+func (c *jwksClient) fetchJSONWebKey(keyId string, use string) (*jose.JSONWebKey, error) {
 	jsonWebKeySet, err := c.source.JSONWebKeySet()
 	if err != nil {
 		return nil, err
