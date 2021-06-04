@@ -21,6 +21,10 @@ github.com/asaskevich/govalidator
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
+# github.com/form3tech-oss/jwt-go v3.2.3+incompatible
+## explicit
+github.com/form3tech-oss/jwt-go
+github.com/form3tech-oss/jwt-go/request
 # github.com/gin-contrib/sse v0.1.0
 github.com/gin-contrib/sse
 # github.com/gin-gonic/gin v1.6.3
@@ -138,6 +142,12 @@ github.com/ory/hydra-client-go/client
 github.com/ory/hydra-client-go/client/admin
 github.com/ory/hydra-client-go/client/public
 github.com/ory/hydra-client-go/models
+# github.com/ory/kratos-client-go v0.6.3-alpha.1
+## explicit
+github.com/ory/kratos-client-go
+# github.com/patrickmn/go-cache v2.1.0+incompatible
+## explicit
+github.com/patrickmn/go-cache
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -255,13 +265,15 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
+# golang.org/x/oauth2 v0.0.0-20210323180902-22b0adad7558
 golang.org/x/oauth2
 golang.org/x/oauth2/google
+golang.org/x/oauth2/google/internal/externalaccount
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78
@@ -417,7 +429,6 @@ google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/fieldmaskpb
 google.golang.org/protobuf/types/known/timestamppb
-google.golang.org/protobuf/types/known/wrapperspb
 google.golang.org/protobuf/types/pluginpb
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
