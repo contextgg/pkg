@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/contextgg/pkg/events"
+	"github.com/google/uuid"
 )
 
 type StoreOpts func(s Store)
@@ -60,7 +61,7 @@ func applyEvents(ctx context.Context, aggregate AggregateSourced, originalEvents
 }
 
 type Store interface {
-	Load(ctx context.Context, id string, forced bool) (Entity, error)
+	Load(ctx context.Context, id uuid.UUID, forced bool) (Entity, error)
 	Save(ctx context.Context, aggregate Entity) error
 	Delete(ctx context.Context, aggregate Entity) error
 	RunInTransaction(ctx context.Context, fn func(Store) error) error
@@ -84,7 +85,7 @@ func (s *store) loadSourced(ctx context.Context, aggregate AggregateSourced, for
 		}
 	}
 	// load up the events from the DB.
-	originalEvents, err := s.data.LoadEvents(ctx, aggregate.GetID(), aggregate.GetTypeName(), aggregate.GetVersion())
+	originalEvents, err := s.data.LoadEvents(ctx, aggregate.GetNamespace(), aggregate.GetID(), aggregate.GetTypeName(), aggregate.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func (s *store) deleteEntity(ctx context.Context, aggregate Entity) error {
 	return s.data.DeleteEntry(ctx, aggregate)
 }
 
-func (s *store) Load(ctx context.Context, id string, forced bool) (Entity, error) {
+func (s *store) Load(ctx context.Context, id uuid.UUID, forced bool) (Entity, error) {
 	// make the aggregate
 	entity := s.factory(id)
 

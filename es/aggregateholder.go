@@ -1,6 +1,9 @@
 package es
 
-import "github.com/contextgg/pkg/events"
+import (
+	"github.com/contextgg/pkg/events"
+	"github.com/google/uuid"
+)
 
 // AggregateHolder for event stored aggregates
 type AggregateHolder interface {
@@ -15,26 +18,26 @@ type AggregateHolder interface {
 
 // BaseAggregateHolder to make our commands smaller
 type BaseAggregateHolder struct {
-	ID       string
-	TypeName string
+	Namespace string    `pg:",pk"`
+	Id        uuid.UUID `pg:",pk,type:uuid"`
 
-	events []events.Event
+	typeName string
+	events   []events.Event
 }
 
-// Initialize the aggregate with id and type
-func (a *BaseAggregateHolder) Initialize(id string, typeName string) {
-	a.ID = id
-	a.TypeName = typeName
+// GetNamespace of the aggregate
+func (a *BaseAggregateHolder) GetNamespace() string {
+	return a.Namespace
 }
 
 // GetID of the aggregate
-func (a *BaseAggregateHolder) GetID() string {
-	return a.ID
+func (a *BaseAggregateHolder) GetID() uuid.UUID {
+	return a.Id
 }
 
 // GetTypeName of the aggregate
 func (a *BaseAggregateHolder) GetTypeName() string {
-	return a.TypeName
+	return a.typeName
 }
 
 // PublishEvent registers an event to be published after the aggregate
@@ -51,4 +54,12 @@ func (a *BaseAggregateHolder) EventsToPublish() []events.Event {
 // ClearEvents clears all uncommitted events after saving.
 func (a *BaseAggregateHolder) ClearEvents() {
 	a.events = nil
+}
+
+func NewBaseAggregateHolder(namespace string, id uuid.UUID, typeName string) BaseAggregateHolder {
+	return BaseAggregateHolder{
+		Namespace: namespace,
+		Id:        id,
+		typeName:  typeName,
+	}
 }

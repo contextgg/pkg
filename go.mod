@@ -13,6 +13,7 @@ require (
 	github.com/go-openapi/validate v0.20.0 // indirect
 	github.com/go-pg/pg/v10 v10.7.4
 	github.com/golang/protobuf v1.4.3
+	github.com/google/uuid v1.1.2
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/ory/hydra-client-go v1.9.0
 	github.com/ory/kratos-client-go v0.6.3-alpha.1

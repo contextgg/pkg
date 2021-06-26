@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/contextgg/pkg/events"
+	"github.com/google/uuid"
 )
 
 // EventApplier for applying events
@@ -39,21 +40,27 @@ type AggregateSourced interface {
 
 // BaseAggregateSourced to make our commands smaller
 type BaseAggregateSourced struct {
-	ID       string
-	TypeName string
-	Version  int
+	Namespace string    `pg:",pk"`
+	Id        uuid.UUID `pg:",pk,type:uuid"`
+	Version   int       `pg:"-"`
 
-	events []events.Event
+	typeName string
+	events   []events.Event
+}
+
+// GetNamespace of the aggregate
+func (a *BaseAggregateSourced) GetNamespace() string {
+	return a.Namespace
 }
 
 // GetID of the aggregate
-func (a *BaseAggregateSourced) GetID() string {
-	return a.ID
+func (a *BaseAggregateSourced) GetID() uuid.UUID {
+	return a.Id
 }
 
 // GetTypeName of the aggregate
 func (a *BaseAggregateSourced) GetTypeName() string {
-	return a.TypeName
+	return a.typeName
 }
 
 // StoreEventData will add the event to a list which will be persisted later
@@ -82,4 +89,13 @@ func (a *BaseAggregateSourced) Events() []events.Event {
 // ClearEvents clears all uncommitted events after saving.
 func (a *BaseAggregateSourced) ClearEvents() {
 	a.events = []events.Event{}
+}
+
+// NewBaseAggregateSourced create a new base aggregate
+func NewBaseAggregateSourced(namespace string, id uuid.UUID, typeName string) BaseAggregateSourced {
+	return BaseAggregateSourced{
+		Namespace: namespace,
+		Id:        id,
+		typeName:  typeName,
+	}
 }

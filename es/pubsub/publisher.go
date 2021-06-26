@@ -146,7 +146,7 @@ func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error 
 		Debug().
 		Str("topic_id", c.topic.ID()).
 		Str("event_type", event.Type).
-		Str("event_aggregate_id", event.AggregateID).
+		Str("event_aggregate_id", event.AggregateID.String()).
 		Str("event_aggregate_type", event.AggregateType).
 		Msg("Event Published via GCP pub/sub")
 	return nil
