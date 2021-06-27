@@ -6,8 +6,8 @@ import (
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
+	"github.com/contextgg/pkg/ns"
 	"github.com/contextgg/pkg/pgdb"
-	"github.com/google/uuid"
 )
 
 func createDb() pgdb.DB {
@@ -32,9 +32,9 @@ type Fake struct {
 	Name string `json:"name"`
 }
 
-func NewFake(id uuid.UUID) es.Entity {
+func NewFake(id string) es.Entity {
 	return &Fake{
-		BaseAggregateHolder: es.NewBaseAggregateHolder("context", id, "Fake"),
+		BaseAggregateHolder: es.NewBaseAggregateHolder(id, "Fake"),
 	}
 }
 
@@ -66,13 +66,13 @@ func (a *FakeSourced) ApplyEvent(ctx context.Context, event events.Event) error 
 	return nil
 }
 
-func NewFakeSourced(id uuid.UUID) es.Entity {
+func NewFakeSourced(id string) es.Entity {
 	return &FakeSourced{
-		BaseAggregateSourced: es.NewBaseAggregateSourced("context", id, "FakeSourced"),
+		BaseAggregateSourced: es.NewBaseAggregateSourced(id, "FakeSourced"),
 	}
 }
 
-func TestEntitySave(t *testing.T) {
+func TestEntity(t *testing.T) {
 	db := createDb()
 	data := NewPostgresData(
 		db,
@@ -81,16 +81,35 @@ func TestEntitySave(t *testing.T) {
 		),
 	)
 
-	ctx := context.TODO()
+	id := "72c096f0-d64a-11eb-b8bc-0242ac130003"
 
-	id := uuid.MustParse("72c096f0-d64a-11eb-b8bc-0242ac130003")
-	entity := NewFake(id).(*Fake)
-	entity.Name = "hello"
+	testEntitySave := func(t *testing.T) {
+		ctx := ns.SetNamespace(context.TODO(), "temp")
 
-	if err := data.SaveEntity(ctx, entity); err != nil {
-		t.Error(err)
-		return
+		entity := NewFake(id).(*Fake)
+		entity.Name = "hello"
+
+		namespace := ns.FromContext(ctx)
+		if err := data.SaveEntity(ctx, namespace, entity); err != nil {
+			t.Error(err)
+			return
+		}
 	}
+	testEntityLoad := func(t *testing.T) {
+		ctx := ns.SetNamespace(context.TODO(), "temp")
+		namespace := ns.FromContext(ctx)
+
+		entity := NewFake(id)
+		if err := data.LoadEntity(ctx, namespace, entity); err != nil {
+			t.Error(err)
+			return
+		}
+
+		t.Log(entity)
+	}
+
+	t.Run("TestEntitySave", testEntitySave)
+	t.Run("TestEntityLoad", testEntityLoad)
 }
 
 func TestSourcedSave(t *testing.T) {
@@ -108,12 +127,20 @@ func TestSourcedSave(t *testing.T) {
 	fakeRepo := es.NewStore(data, eventBus, NewFakeSourced)
 	fakeHandler := es.NewAggregateSourcedHandler(fakeRepo)
 
-	ctx := context.TODO()
+	ctx := ns.SetNamespace(context.TODO(), "temp")
 
-	id := uuid.MustParse("72c096f0-d64a-11eb-b8bc-0242ac130003")
 	if err := fakeHandler.HandleCommand(ctx, &FakeCommand{
 		BaseCommand: es.BaseCommand{
-			AggregateId: id,
+			AggregateId: "72c096f0-d64a-11eb-b8bc-0242ac130003",
+		},
+	}); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := fakeHandler.HandleCommand(ctx, &FakeCommand{
+		BaseCommand: es.BaseCommand{
+			AggregateId: "72c096f0-d64a-11eb-b8bc-0242ac130003",
 		},
 	}); err != nil {
 		t.Error(err)

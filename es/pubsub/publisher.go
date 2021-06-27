@@ -12,6 +12,7 @@ import (
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
+	"github.com/contextgg/pkg/ns"
 )
 
 func getTopic(ctx context.Context, cli *pubsub.Client, topicName string) (*pubsub.Topic, error) {
@@ -130,9 +131,15 @@ func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error 
 		return err
 	}
 
+	namespace := ns.FromContext(ctx)
+	attrs := map[string]string{
+		"namespace": namespace,
+	}
+
 	publishCtx := context.Background()
 	res := c.topic.Publish(publishCtx, &pubsub.Message{
-		Data: msg,
+		Data:       msg,
+		Attributes: attrs,
 	})
 	if _, err := res.Get(publishCtx); err != nil {
 		log.
@@ -146,7 +153,7 @@ func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error 
 		Debug().
 		Str("topic_id", c.topic.ID()).
 		Str("event_type", event.Type).
-		Str("event_aggregate_id", event.AggregateID.String()).
+		Str("event_aggregate_id", event.AggregateID).
 		Str("event_aggregate_type", event.AggregateType).
 		Msg("Event Published via GCP pub/sub")
 	return nil
@@ -207,8 +214,16 @@ func (c *Publisher) handler(ctx context.Context, msg *pubsub.Message) {
 		return
 	}
 
+	handlerCtx := ctx
+	if msg.Attributes != nil {
+		namespace, ok := msg.Attributes["namespace"]
+		if ok && len(namespace) > 0 {
+			handlerCtx = ns.SetNamespace(ctx, namespace)
+		}
+	}
+
 	// Notify all observers about the event.
-	if err := c.eventBus.HandleEvent(ctx, *evt); err != nil {
+	if err := c.eventBus.HandleEvent(handlerCtx, *evt); err != nil {
 		select {
 		case c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not handle event: %s", err.Error()), Ctx: ctx, Event: evt}:
 		default:

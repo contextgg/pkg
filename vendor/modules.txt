@@ -38,7 +38,6 @@ github.com/gin-gonic/gin/render
 github.com/go-openapi/analysis
 github.com/go-openapi/analysis/internal
 # github.com/go-openapi/errors v0.19.9
-## explicit
 github.com/go-openapi/errors
 # github.com/go-openapi/jsonpointer v0.19.5
 github.com/go-openapi/jsonpointer
@@ -47,7 +46,6 @@ github.com/go-openapi/jsonreference
 # github.com/go-openapi/loads v0.20.0
 github.com/go-openapi/loads
 # github.com/go-openapi/runtime v0.19.24
-## explicit
 github.com/go-openapi/runtime
 github.com/go-openapi/runtime/client
 github.com/go-openapi/runtime/logger
@@ -60,13 +58,10 @@ github.com/go-openapi/runtime/yamlpc
 # github.com/go-openapi/spec v0.20.0
 github.com/go-openapi/spec
 # github.com/go-openapi/strfmt v0.19.11
-## explicit
 github.com/go-openapi/strfmt
 # github.com/go-openapi/swag v0.19.12
-## explicit
 github.com/go-openapi/swag
 # github.com/go-openapi/validate v0.20.0
-## explicit
 github.com/go-openapi/validate
 # github.com/go-pg/pg/v10 v10.7.4
 ## explicit
@@ -105,9 +100,6 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/uuid v1.1.2
-## explicit
-github.com/google/uuid
 # github.com/googleapis/gax-go/v2 v2.0.5
 github.com/googleapis/gax-go/v2
 # github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
@@ -438,6 +430,8 @@ google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/fieldmaskpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/pluginpb
+# gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0
+## explicit
 # gopkg.in/square/go-jose.v2 v2.5.1
 ## explicit
 gopkg.in/square/go-jose.v2/cipher

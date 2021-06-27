@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/contextgg/pkg/events"
-	"github.com/google/uuid"
+	"github.com/contextgg/pkg/ns"
 )
 
 type StoreOpts func(s Store)
@@ -61,7 +61,7 @@ func applyEvents(ctx context.Context, aggregate AggregateSourced, originalEvents
 }
 
 type Store interface {
-	Load(ctx context.Context, id uuid.UUID, forced bool) (Entity, error)
+	Load(ctx context.Context, id string, forced bool) (Entity, error)
 	Save(ctx context.Context, aggregate Entity) error
 	Delete(ctx context.Context, aggregate Entity) error
 	RunInTransaction(ctx context.Context, fn func(Store) error) error
@@ -78,14 +78,16 @@ type store struct {
 }
 
 func (s *store) loadSourced(ctx context.Context, aggregate AggregateSourced, forced bool) (Entity, error) {
+	namespace := ns.FromContext(ctx)
+
 	// load up the aggregate
 	if s.minVersionDiff >= 0 && !forced {
-		if err := s.data.LoadSnapshot(ctx, s.revision, aggregate); err != nil {
+		if err := s.data.LoadSnapshot(ctx, namespace, s.revision, aggregate); err != nil {
 			return nil, err
 		}
 	}
 	// load up the events from the DB.
-	originalEvents, err := s.data.LoadEvents(ctx, aggregate.GetNamespace(), aggregate.GetID(), aggregate.GetTypeName(), aggregate.GetVersion())
+	originalEvents, err := s.data.LoadEvents(ctx, namespace, aggregate.GetID(), aggregate.GetTypeName(), aggregate.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -95,18 +97,22 @@ func (s *store) loadSourced(ctx context.Context, aggregate AggregateSourced, for
 	return aggregate, nil
 }
 func (s *store) loadEntity(ctx context.Context, entity Entity, forced bool) (Entity, error) {
-	if err := s.data.LoadEntity(ctx, entity); err != nil && !errors.Is(err, ErrNoRows) {
+	namespace := ns.FromContext(ctx)
+
+	if err := s.data.LoadEntity(ctx, namespace, entity); err != nil && !errors.Is(err, ErrNoRows) {
 		return nil, err
 	}
 	return entity, nil
 }
 func (s *store) saveSourced(ctx context.Context, aggregate AggregateSourced) error {
+	namespace := ns.FromContext(ctx)
+
 	originalVersion := aggregate.GetVersion()
 
 	// now save it!.
 	events := aggregate.Events()
 	if len(events) > 0 {
-		if err := s.data.SaveEvents(ctx, events...); err != nil {
+		if err := s.data.SaveEvents(ctx, namespace, events...); err != nil {
 			return err
 		}
 		aggregate.ClearEvents()
@@ -124,13 +130,13 @@ func (s *store) saveSourced(ctx context.Context, aggregate AggregateSourced) err
 	}
 
 	if s.minVersionDiff >= 0 && diff >= s.minVersionDiff {
-		if err := s.data.SaveSnapshot(ctx, s.revision, aggregate); err != nil {
+		if err := s.data.SaveSnapshot(ctx, namespace, s.revision, aggregate); err != nil {
 			return err
 		}
 	}
 
 	if s.project {
-		if err := s.data.SaveEntity(ctx, aggregate); err != nil {
+		if err := s.data.SaveEntity(ctx, namespace, aggregate); err != nil {
 			return err
 		}
 	}
@@ -146,10 +152,13 @@ func (s *store) saveSourced(ctx context.Context, aggregate AggregateSourced) err
 	return nil
 }
 func (s *store) saveEntity(ctx context.Context, aggregate Entity) error {
-	return s.data.SaveEntity(ctx, aggregate)
+	namespace := ns.FromContext(ctx)
+	return s.data.SaveEntity(ctx, namespace, aggregate)
 }
 func (s *store) saveAggregateHolder(ctx context.Context, aggregate AggregateHolder) error {
-	if err := s.data.SaveEntity(ctx, aggregate); err != nil {
+	namespace := ns.FromContext(ctx)
+
+	if err := s.data.SaveEntity(ctx, namespace, aggregate); err != nil {
 		return err
 	}
 
@@ -169,10 +178,12 @@ func (s *store) deleteSourced(ctx context.Context, aggregate AggregateSourced) e
 	return fmt.Errorf("Delete sourced %s - %s", aggregate.GetID(), aggregate.GetTypeName())
 }
 func (s *store) deleteEntity(ctx context.Context, aggregate Entity) error {
-	return s.data.DeleteEntry(ctx, aggregate)
+	namespace := ns.FromContext(ctx)
+
+	return s.data.DeleteEntry(ctx, namespace, aggregate)
 }
 
-func (s *store) Load(ctx context.Context, id uuid.UUID, forced bool) (Entity, error) {
+func (s *store) Load(ctx context.Context, id string, forced bool) (Entity, error) {
 	// make the aggregate
 	entity := s.factory(id)
 

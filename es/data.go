@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/contextgg/pkg/events"
-	"github.com/google/uuid"
 )
 
 var ErrNoRows = errors.New("No rows found")
@@ -35,17 +34,17 @@ func InitializeEntities(entities ...Entity) *DataOpts {
 // Data for all
 type Data interface {
 	BeginContext(ctx context.Context) (Transaction, error)
-	LoadEntity(ctx context.Context, entity Entity) error
-	SaveEntity(ctx context.Context, entity Entity) error
-	DeleteEntry(ctx context.Context, entity Entity) error
-	LoadSnapshot(ctx context.Context, rev string, agg AggregateSourced) error
-	SaveSnapshot(ctx context.Context, rev string, agg AggregateSourced) error
-	LoadUniqueEvents(ctx context.Context, aggregateNamespace string, aggregateTypeName string) ([]events.Event, error)
-	LoadEventsByType(ctx context.Context, aggregateNamespace string, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error)
-	LoadAllEvents(ctx context.Context, aggregateNamespace string) ([]events.Event, error)
-	LoadEvent(ctx context.Context, aggregateNamespace string, id uuid.UUID, aggregateTypeName string, version int) (*events.Event, error)
-	LoadEvents(ctx context.Context, aggregateNamespace string, id uuid.UUID, aggregateTypeName string, fromVersion int) ([]events.Event, error)
-	SaveEvents(ctx context.Context, events ...events.Event) error
+	LoadEntity(ctx context.Context, namespace string, entity Entity) error
+	SaveEntity(ctx context.Context, namespace string, entity Entity) error
+	DeleteEntry(ctx context.Context, namespace string, entity Entity) error
+	LoadSnapshot(ctx context.Context, namespace string, rev string, agg AggregateSourced) error
+	SaveSnapshot(ctx context.Context, namespace string, rev string, agg AggregateSourced) error
+	LoadUniqueEvents(ctx context.Context, namespace string, aggregateTypeName string) ([]events.Event, error)
+	LoadEventsByType(ctx context.Context, namespace string, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error)
+	LoadAllEvents(ctx context.Context, namespace string) ([]events.Event, error)
+	LoadEvent(ctx context.Context, namespace string, id string, aggregateTypeName string, version int) (*events.Event, error)
+	LoadEvents(ctx context.Context, namespace string, id string, aggregateTypeName string, fromVersion int) ([]events.Event, error)
+	SaveEvents(ctx context.Context, namespace string, events ...events.Event) error
 }
 
 // Transaction for doing things in a transaction

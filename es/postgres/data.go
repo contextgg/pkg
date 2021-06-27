@@ -3,11 +3,9 @@ package postgres
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/go-pg/pg/v10/orm"
-	"github.com/google/uuid"
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
@@ -16,18 +14,18 @@ import (
 )
 
 type event struct {
-	AggregateNamespace string    `pg:",pk"`
-	AggregateID        uuid.UUID `pg:",pk,type:uuid"`
-	AggregateType      string    `pg:",pk"`
-	Version            int       `pg:",pk"`
-	Type               string    `pg:",notnull"`
-	Timestamp          time.Time
-	Data               json.RawMessage
-	Metadata           map[string]interface{}
+	Namespace     string `pg:",pk"`
+	AggregateID   string `pg:",pk,type:uuid"`
+	AggregateType string `pg:",pk"`
+	Version       int    `pg:",pk"`
+	Type          string `pg:",notnull"`
+	Timestamp     time.Time
+	Data          json.RawMessage
+	Metadata      map[string]interface{}
 }
 type snapshot struct {
 	Namespace string          `pg:",pk"`
-	ID        uuid.UUID       `pg:",pk,type:uuid"`
+	ID        string          `pg:",pk,type:uuid"`
 	Type      string          `pg:",pk"`
 	Revision  string          `pg:",pk"`
 	Aggregate json.RawMessage `pg:",notnull"`
@@ -97,30 +95,29 @@ func (s *data) Rollback(ctx context.Context) error {
 	return s.db.RollbackContext(ctx)
 }
 
-func (s *data) SaveEntity(ctx context.Context, entity es.Entity) error {
+func (s *data) SaveEntity(ctx context.Context, namespace string, entity es.Entity) error {
+	entity.SetNamespace(namespace)
 	_, err := s.db.ModelContext(ctx, entity).
 		OnConflict("(namespace, id) DO UPDATE").
 		Insert()
 	return err
 }
-func (s *data) DeleteEntry(ctx context.Context, entity es.Entity) error {
+func (s *data) DeleteEntry(ctx context.Context, namespace string, entity es.Entity) error {
+	entity.SetNamespace(namespace)
 	_, err := s.db.ModelContext(ctx, entity).
 		WherePK().
 		Delete()
 	return err
 }
-
-func (s *data) SaveSnapshot(ctx context.Context, rev string, agg es.AggregateSourced) error {
+func (s *data) SaveSnapshot(ctx context.Context, namespace string, rev string, agg es.AggregateSourced) error {
 	// to json!
 	data, err := json.Marshal(agg)
 	if err != nil {
 		return err
 	}
 
-	log.Printf(string(data))
-
 	ss := &snapshot{
-		Namespace: agg.GetNamespace(),
+		Namespace: namespace,
 		ID:        agg.GetID(),
 		Type:      agg.GetTypeName(),
 		Revision:  rev,
@@ -133,7 +130,7 @@ func (s *data) SaveSnapshot(ctx context.Context, rev string, agg es.AggregateSou
 	}
 	return nil
 }
-func (s *data) SaveEvents(ctx context.Context, evts ...events.Event) error {
+func (s *data) SaveEvents(ctx context.Context, namespace string, evts ...events.Event) error {
 	all := make([]event, len(evts))
 	for i, evt := range evts {
 		data, err := types.Marshal(evt.Data, s.legacy)
@@ -142,27 +139,28 @@ func (s *data) SaveEvents(ctx context.Context, evts ...events.Event) error {
 		}
 
 		m := event{
-			AggregateNamespace: evt.AggregateNamespace,
-			AggregateID:        evt.AggregateID,
-			AggregateType:      evt.AggregateType,
-			Version:            evt.Version,
-			Type:               evt.Type,
-			Timestamp:          evt.Timestamp,
-			Data:               data,
-			Metadata:           evt.Metadata,
+			Namespace:     namespace,
+			AggregateID:   evt.AggregateID,
+			AggregateType: evt.AggregateType,
+			Version:       evt.Version,
+			Type:          evt.Type,
+			Timestamp:     evt.Timestamp,
+			Data:          data,
+			Metadata:      evt.Metadata,
 		}
 		all[i] = m
 	}
 
 	// save em
 	if _, err := s.db.ModelContext(ctx, &all).
-		OnConflict("(aggregate_namespace, aggregate_id, aggregate_type, version) DO UPDATE").
+		OnConflict("(namespace, aggregate_id, aggregate_type, version) DO UPDATE").
 		Insert(); err != nil {
 		return err
 	}
 	return nil
 }
-func (s *data) LoadEntity(ctx context.Context, entity es.Entity) error {
+func (s *data) LoadEntity(ctx context.Context, namespace string, entity es.Entity) error {
+	entity.SetNamespace(namespace)
 	if err := s.db.ModelContext(ctx, entity).WherePK().Select(); err != nil {
 		if isNoRow(err) {
 			return es.ErrNoRows
@@ -171,9 +169,9 @@ func (s *data) LoadEntity(ctx context.Context, entity es.Entity) error {
 	}
 	return nil
 }
-func (s *data) LoadSnapshot(ctx context.Context, rev string, agg es.AggregateSourced) error {
+func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, agg es.AggregateSourced) error {
 	ss := &snapshot{
-		Namespace: agg.GetNamespace(),
+		Namespace: namespace,
 		ID:        agg.GetID(),
 		Type:      agg.GetTypeName(),
 		Revision:  rev,
@@ -190,14 +188,14 @@ func (s *data) LoadSnapshot(ctx context.Context, rev string, agg es.AggregateSou
 	}
 	return nil
 }
-func (s *data) LoadEventsByType(ctx context.Context, aggregateNamespace string, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error) {
+func (s *data) LoadEventsByType(ctx context.Context, namespace string, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
 	if err := s.db.
 		ModelContext(ctx, &evts).
-		Where("event.aggregate_namespace = ?", aggregateNamespace).
-		Where("event.aggregate_type = ?", aggregateTypeName).
-		WhereIn("event.type IN (?)", eventTypeNames).
+		Where("namespace = ?", namespace).
+		Where("aggregate_type = ?", aggregateTypeName).
+		WhereIn("type IN (?)", eventTypeNames).
 		Select(); err != nil {
 		return nil, err
 	}
@@ -210,24 +208,23 @@ func (s *data) LoadEventsByType(ctx context.Context, aggregateNamespace string, 
 		}
 
 		m := events.Event{
-			AggregateNamespace: evt.AggregateNamespace,
-			AggregateID:        evt.AggregateID,
-			AggregateType:      evt.AggregateType,
-			Version:            evt.Version,
-			Type:               evt.Type,
-			Timestamp:          evt.Timestamp,
-			Data:               data,
+			AggregateID:   evt.AggregateID,
+			AggregateType: evt.AggregateType,
+			Version:       evt.Version,
+			Type:          evt.Type,
+			Timestamp:     evt.Timestamp,
+			Data:          data,
 		}
 		out[i] = m
 	}
 	return out, nil
 }
-func (s *data) LoadUniqueEvents(ctx context.Context, aggregateNamespace string, typeName string) ([]events.Event, error) {
+func (s *data) LoadUniqueEvents(ctx context.Context, namespace string, typeName string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
 	if err := s.db.
 		ModelContext(ctx, &evts).
-		Where("aggregate_namespace = ?", aggregateNamespace).
+		Where("namespace = ?", namespace).
 		Where("aggregate_type = ?", typeName).
 		Where("version = ?", 1).
 		Order("version").
@@ -243,24 +240,23 @@ func (s *data) LoadUniqueEvents(ctx context.Context, aggregateNamespace string, 
 		}
 
 		m := events.Event{
-			AggregateNamespace: evt.AggregateNamespace,
-			AggregateID:        evt.AggregateID,
-			AggregateType:      evt.AggregateType,
-			Version:            evt.Version,
-			Type:               evt.Type,
-			Timestamp:          evt.Timestamp,
-			Data:               data,
+			AggregateID:   evt.AggregateID,
+			AggregateType: evt.AggregateType,
+			Version:       evt.Version,
+			Type:          evt.Type,
+			Timestamp:     evt.Timestamp,
+			Data:          data,
 		}
 		out[i] = m
 	}
 	return out, nil
 }
-func (s *data) LoadAllEvents(ctx context.Context, aggregateNamespace string) ([]events.Event, error) {
+func (s *data) LoadAllEvents(ctx context.Context, namespace string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
 	if err := s.db.
 		ModelContext(ctx, &evts).
-		Where("aggregate_namespace = ?", aggregateNamespace).
+		Where("namespace = ?", namespace).
 		Order("aggregate_type", "version").
 		Select(); err != nil {
 		return nil, err
@@ -274,24 +270,23 @@ func (s *data) LoadAllEvents(ctx context.Context, aggregateNamespace string) ([]
 		}
 
 		m := events.Event{
-			AggregateNamespace: evt.AggregateNamespace,
-			AggregateID:        evt.AggregateID,
-			AggregateType:      evt.AggregateType,
-			Version:            evt.Version,
-			Type:               evt.Type,
-			Timestamp:          evt.Timestamp,
-			Data:               data,
+			AggregateID:   evt.AggregateID,
+			AggregateType: evt.AggregateType,
+			Version:       evt.Version,
+			Type:          evt.Type,
+			Timestamp:     evt.Timestamp,
+			Data:          data,
 		}
 		out[i] = m
 	}
 	return out, nil
 }
-func (s *data) LoadEvent(ctx context.Context, aggregateNamespace string, id uuid.UUID, typeName string, version int) (*events.Event, error) {
+func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeName string, version int) (*events.Event, error) {
 	// Select all users.
 	var evt event
 	if err := s.db.
 		ModelContext(ctx, &evt).
-		Where("aggregate_namespace = ?", aggregateNamespace).
+		Where("namespace = ?", namespace).
 		Where("aggregate_id = ?", id).
 		Where("aggregate_type = ?", typeName).
 		Where("version = ?", version).
@@ -306,22 +301,21 @@ func (s *data) LoadEvent(ctx context.Context, aggregateNamespace string, id uuid
 	}
 
 	m := &events.Event{
-		AggregateNamespace: evt.AggregateNamespace,
-		AggregateID:        evt.AggregateID,
-		AggregateType:      evt.AggregateType,
-		Version:            evt.Version,
-		Type:               evt.Type,
-		Timestamp:          evt.Timestamp,
-		Data:               data,
+		AggregateID:   evt.AggregateID,
+		AggregateType: evt.AggregateType,
+		Version:       evt.Version,
+		Type:          evt.Type,
+		Timestamp:     evt.Timestamp,
+		Data:          data,
 	}
 	return m, nil
 }
-func (s *data) LoadEvents(ctx context.Context, aggregateNamespace string, id uuid.UUID, typeName string, fromVersion int) ([]events.Event, error) {
+func (s *data) LoadEvents(ctx context.Context, namespace string, id string, typeName string, fromVersion int) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
 	if err := s.db.
 		ModelContext(ctx, &evts).
-		Where("aggregate_namespace = ?", aggregateNamespace).
+		Where("namespace = ?", namespace).
 		Where("aggregate_id = ?", id).
 		Where("aggregate_type = ?", typeName).
 		Where("version > ?", fromVersion).
@@ -338,13 +332,12 @@ func (s *data) LoadEvents(ctx context.Context, aggregateNamespace string, id uui
 		}
 
 		m := events.Event{
-			AggregateNamespace: evt.AggregateNamespace,
-			AggregateID:        evt.AggregateID,
-			AggregateType:      evt.AggregateType,
-			Version:            evt.Version,
-			Type:               evt.Type,
-			Timestamp:          evt.Timestamp,
-			Data:               data,
+			AggregateID:   evt.AggregateID,
+			AggregateType: evt.AggregateType,
+			Version:       evt.Version,
+			Type:          evt.Type,
+			Timestamp:     evt.Timestamp,
+			Data:          data,
 		}
 		out[i] = m
 	}
