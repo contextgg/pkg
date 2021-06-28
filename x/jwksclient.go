@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/form3tech-oss/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/square/go-jose"
 	"golang.org/x/sync/semaphore"
 )
