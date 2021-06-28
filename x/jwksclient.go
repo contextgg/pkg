@@ -4,11 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/form3tech-oss/jwt-go"
-	"github.com/form3tech-oss/jwt-go/request"
 	client "github.com/ory/kratos-client-go"
 	"github.com/square/go-jose"
 	"golang.org/x/sync/semaphore"
@@ -25,7 +23,7 @@ type JwksClient interface {
 	GetSignatureKey(keyId string) (*jose.JSONWebKey, error)
 	GetEncryptionKey(keyId string) (*jose.JSONWebKey, error)
 	GetKey(keyId string, use string) (jwk *jose.JSONWebKey, err error)
-	ParseFromRequestWithClaims(r *http.Request) (*jwt.Token, error)
+	KeyFunc(token *jwt.Token) (interface{}, error)
 }
 
 type cacheEntry struct {
@@ -66,8 +64,18 @@ func (c *jwksClient) GetKey(keyId string, use string) (jwk *jose.JSONWebKey, err
 	}
 }
 
-func (c *jwksClient) ParseFromRequestWithClaims(r *http.Request) (*jwt.Token, error) {
-	return request.ParseFromRequestWithClaims(r, request.OAuth2Extractor, &Claims{}, c.keyFunc)
+func (c *jwksClient) KeyFunc(token *jwt.Token) (interface{}, error) {
+	keyId, ok := token.Header["kid"].(string)
+	if !ok {
+		return nil, errors.New("expecting JWT header to have string kid")
+	}
+
+	k, err := c.GetSignatureKey(keyId)
+	if err != nil {
+		return nil, err
+	}
+
+	return k.Key, nil
 }
 
 func (c *jwksClient) refreshKey(keyId string, use string) (*jose.JSONWebKey, error) {
@@ -85,20 +93,6 @@ func (c *jwksClient) save(keyId string, jwk *jose.JSONWebKey) {
 		jwk:     jwk,
 		refresh: time.Now().Add(c.refresh).Unix(),
 	})
-}
-
-func (c *jwksClient) keyFunc(token *jwt.Token) (interface{}, error) {
-	keyId, ok := token.Header["kid"].(string)
-	if !ok {
-		return nil, errors.New("expecting JWT header to have string kid")
-	}
-
-	k, err := c.GetSignatureKey(keyId)
-	if err != nil {
-		return nil, err
-	}
-
-	return k.Key, nil
 }
 
 func (c *jwksClient) fetchJSONWebKey(keyId string, use string) (*jose.JSONWebKey, error) {
