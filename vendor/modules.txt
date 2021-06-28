@@ -24,8 +24,6 @@ github.com/cespare/xxhash/v2
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 ## explicit
 github.com/dgrijalva/jwt-go
-# github.com/form3tech-oss/jwt-go v3.2.3+incompatible
-## explicit
 # github.com/gin-contrib/sse v0.1.0
 github.com/gin-contrib/sse
 # github.com/gin-gonic/gin v1.6.3
@@ -138,8 +136,6 @@ github.com/ory/hydra-client-go/client
 github.com/ory/hydra-client-go/client/admin
 github.com/ory/hydra-client-go/client/public
 github.com/ory/hydra-client-go/models
-# github.com/ory/kratos-client-go v0.6.3-alpha.1
-## explicit
 # github.com/patrickmn/go-cache v2.1.0+incompatible
 ## explicit
 github.com/patrickmn/go-cache
@@ -266,6 +262,7 @@ golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20210323180902-22b0adad7558
+## explicit
 golang.org/x/oauth2
 golang.org/x/oauth2/google
 golang.org/x/oauth2/google/internal/externalaccount
