@@ -7,16 +7,9 @@ import (
 	"time"
 
 	"github.com/form3tech-oss/jwt-go"
-	client "github.com/ory/kratos-client-go"
 	"github.com/square/go-jose"
 	"golang.org/x/sync/semaphore"
 )
-
-// Claims for stuff
-type Claims struct {
-	*jwt.StandardClaims
-	Session client.Session `json:"session"`
-}
 
 // JwksClient interface
 type JwksClient interface {
