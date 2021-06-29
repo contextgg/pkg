@@ -5,6 +5,7 @@ type Bus interface {
 	EventBus
 
 	AddSaga(saga Saga, events ...interface{})
+	AddProjector(store Store, projector Projector, events ...interface{})
 }
 
 type bus struct {
