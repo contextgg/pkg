@@ -17,7 +17,10 @@ func (b *bus) AddSaga(saga Saga, events ...interface{}) {
 	b.AddHandler(handler, MatchAnyEventOf(events...))
 }
 
-// bus.AddSaga(registerSaga, &eventdata.BankAccountRegistered{})
+func (b *bus) AddProjector(store Store, projector Projector, events ...interface{}) {
+	handler := NewProjectorHandler(store, projector)
+	b.AddHandler(handler, MatchAnyEventOf(events...))
+}
 
 func NewBus() Bus {
 	commandBus := NewCommandBus()
