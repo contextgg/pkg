@@ -17,6 +17,13 @@ const userKey key = 1
 func TokenFromContext(ctx context.Context) interface{} {
 	return ctx.Value(userKey)
 }
+func ClaimsFromContext(ctx context.Context) interface{} {
+	token := ctx.Value(userKey).(*jwt.Token)
+	if token == nil {
+		return nil
+	}
+	return token.Claims
+}
 
 // Algorithms
 const (
