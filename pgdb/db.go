@@ -115,7 +115,7 @@ func SetupPostgres(conn, dbName, dbUser, dbPassword string, opts ...PostgresOpti
 	}
 
 	o.PoolSize = 20
-	o.PoolTimeout = time.Second * 30
+	o.PoolTimeout = time.Minute * 2
 
 	db := pg.Connect(o)
 	for _, item := range opts {
