@@ -279,12 +279,12 @@ func (tx *Tx) queryOne(
 }
 
 // Model is an alias for DB.Model.
-func (tx *Tx) Model(model ...interface{}) *orm.Query {
+func (tx *Tx) Model(model ...interface{}) *Query {
 	return orm.NewQuery(tx, model...)
 }
 
 // ModelContext acts like Model but additionally receives a context.
-func (tx *Tx) ModelContext(c context.Context, model ...interface{}) *orm.Query {
+func (tx *Tx) ModelContext(c context.Context, model ...interface{}) *Query {
 	return orm.NewQueryContext(c, tx, model...)
 }
 
@@ -339,7 +339,7 @@ func (tx *Tx) Commit() error {
 
 // Commit commits the transaction.
 func (tx *Tx) CommitContext(ctx context.Context) error {
-	_, err := tx.ExecContext(ctx, "COMMIT")
+	_, err := tx.ExecContext(internal.UndoContext(ctx), "COMMIT")
 	tx.close()
 	return err
 }
@@ -350,7 +350,7 @@ func (tx *Tx) Rollback() error {
 
 // Rollback aborts the transaction.
 func (tx *Tx) RollbackContext(ctx context.Context) error {
-	_, err := tx.ExecContext(ctx, "ROLLBACK")
+	_, err := tx.ExecContext(internal.UndoContext(ctx), "ROLLBACK")
 	tx.close()
 	return err
 }

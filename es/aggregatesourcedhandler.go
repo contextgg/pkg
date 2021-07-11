@@ -45,9 +45,6 @@ func isReplay(cmd Command) bool {
 // NewAggregateSourcedHandler creates the commandhandler
 func NewAggregateSourcedHandler(store Store) CommandHandler {
 	return CommandHandlerFunc(func(ctx context.Context, cmd Command) error {
-		// return store.RunInTransaction(ctx, func(store Store) error {
-		// })
-
 		replay := isReplay(cmd)
 
 		id := cmd.GetAggregateId()

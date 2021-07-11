@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://uptrace.dev/?utm_source=gh-pg&utm_campaign=gh-pg-banner1">
+    <img src="https://raw.githubusercontent.com/uptrace/roadmap/master/banner1.png">
+  </a>
+</p>
+
 # PostgreSQL client and ORM for Golang
 
 [![Build Status](https://travis-ci.org/go-pg/pg.svg?branch=v10)](https://travis-ci.org/go-pg/pg)
@@ -5,7 +11,8 @@
 [![Documentation](https://img.shields.io/badge/pg-documentation-informational)](https://pg.uptrace.dev/)
 [![Chat](https://discordapp.com/api/guilds/752070105847955518/widget.png)](https://discord.gg/rWtp5Aj)
 
-> :heart: [**Uptrace.dev** - distributed traces, logs, and errors in one place](https://uptrace.dev)
+**Important**. Please check [Bun](https://bun.uptrace.dev/guide/pg-migration.html) - the next
+iteration of go-pg built on top of `sql.DB`.
 
 - Join [Discord](https://discord.gg/rWtp5Aj) to ask questions.
 - [Documentation](https://pg.uptrace.dev)
@@ -25,7 +32,8 @@
 - [Genna - cli tool for generating go-pg models](https://github.com/dizzyfool/genna).
 - [urlstruct](https://github.com/go-pg/urlstruct) to decode `url.Values` into structs.
 - [Sharding](https://github.com/go-pg/sharding).
-- [go-pg-monitor](https://github.com/hypnoglow/go-pg-monitor) - Prometheus metrics based on go-pg client stats.
+- [go-pg-monitor](https://github.com/hypnoglow/go-pg-monitor) - Prometheus metrics based on go-pg
+  client stats.
 
 ## Features
 
@@ -86,7 +94,6 @@
 - [Creating tables from structs](https://pkg.go.dev/github.com/go-pg/pg/v10?tab=doc#example-DB.Model-CreateTable).
 - [ForEach](https://pkg.go.dev/github.com/go-pg/pg/v10?tab=doc#example-DB.Model-ForEach) that calls
   a function for each row returned by the query without loading all rows into the memory.
-- Works with PgBouncer in transaction pooling mode.
 
 ## Installation
 
