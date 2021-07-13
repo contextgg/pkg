@@ -3,6 +3,8 @@ package pgdb
 import (
 	"context"
 	"errors"
+	"runtime"
+	"time"
 
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
@@ -112,6 +114,9 @@ func SetupPostgres(conn, dbName, dbUser, dbPassword string, opts ...PostgresOpti
 	if len(dbPassword) > 0 {
 		o.Password = dbPassword
 	}
+
+	o.ReadTimeout = time.Minute * 2
+	o.PoolSize = 30 * runtime.NumCPU()
 
 	db := pg.Connect(o)
 	for _, item := range opts {
