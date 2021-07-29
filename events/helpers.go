@@ -33,5 +33,9 @@ func EventDecoder(reader io.Reader) (*Event, error) {
 
 	evt := out.Event
 	evt.Data = data
+
+	if evt.Metadata == nil {
+		evt.Metadata = make(map[string]interface{})
+	}
 	return evt, nil
 }

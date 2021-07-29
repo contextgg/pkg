@@ -120,7 +120,7 @@ func NewPublisher(eventBus es.EventBus, appId string, projectID string, topicNam
 	return p, nil
 }
 
-// PublishEvent via nats
+// PublishEvent via pubsub
 func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error {
 	msg, err := json.Marshal(event)
 	if err != nil {
@@ -221,6 +221,8 @@ func (c *Publisher) handler(ctx context.Context, msg *pubsub.Message) {
 			handlerCtx = ns.SetNamespace(ctx, namespace)
 		}
 	}
+
+	evt.Metadata["publisher"] = true
 
 	// Notify all observers about the event.
 	if err := c.eventBus.HandleEvent(handlerCtx, *evt); err != nil {

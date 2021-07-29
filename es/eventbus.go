@@ -111,8 +111,9 @@ func (b *eventBus) HandleEvent(ctx context.Context, evt events.Event) error {
 		return err
 	}
 
-	matcher := MatchNotLocal()
-	if !matcher(evt) {
+	notLocal := MatchNotLocal()
+	notPublisher := MatchNotPublisher()
+	if !notLocal(evt) || !notPublisher(evt) {
 		return nil
 	}
 

@@ -33,6 +33,27 @@ func MatchNotLocal() EventMatcher {
 	}
 }
 
+// MatchNotPublisher only events that aren't local
+func MatchNotPublisher() EventMatcher {
+	return func(e events.Event) bool {
+		if e.Metadata == nil {
+			return true
+		}
+
+		raw, ok := e.Metadata["publisher"]
+		if !ok {
+			return true
+		}
+
+		pub, ok := raw.(bool)
+		if !ok {
+			return true
+		}
+
+		return !pub
+	}
+}
+
 // MatchEvent matches a specific event type, nil events never match.
 func MatchEvent(t string) EventMatcher {
 	return func(e events.Event) bool {
