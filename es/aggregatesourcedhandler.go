@@ -16,6 +16,8 @@ var (
 	ErrWrongVersion = errors.New("When we compute the wrong version")
 	// ErrCreatingAggregate whoops when creating aggregate
 	ErrCreatingAggregate = errors.New("Issue create aggregate")
+	// ErrVersionMismatch when the command's version doesn't match the aggreate
+	ErrVersionMismatch = errors.New("Version mismatch")
 )
 
 // ApplyEventError is when an event could not be applied. It contains the error
@@ -51,6 +53,12 @@ func NewAggregateSourcedHandler(store Store) CommandHandler {
 		aggregate, err := store.Load(ctx, id, replay)
 		if err != nil {
 			return err
+		}
+
+		cv, okCV := cmd.(CommandVersion)
+		versioned, okVersioned := aggregate.(Versioned)
+		if okCV && okVersioned && cv.GetVersion() != versioned.GetVersion() {
+			return ErrVersionMismatch
 		}
 
 		// handle the command

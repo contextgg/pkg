@@ -14,17 +14,20 @@ type EventApplier interface {
 	ApplyEvent(context.Context, events.Event) error
 }
 
+type Versioned interface {
+	// GetVersion returns the version of the aggregate.
+	GetVersion() int
+}
+
 // AggregateSourced for event stored aggregates
 type AggregateSourced interface {
 	Entity
 	CommandHandler
 	EventApplier
+	Versioned
 
 	// StoreEventData will create an event and store it
 	StoreEventData(context.Context, interface{})
-
-	// GetVersion returns the version of the aggregate.
-	GetVersion() int
 
 	// Increment version increments the version of the aggregate. It should be
 	// called after an event has been successfully applied.
