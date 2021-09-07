@@ -24,6 +24,8 @@ github.com/cespare/xxhash/v2
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 ## explicit
 github.com/dgrijalva/jwt-go
+# github.com/fatih/color v1.10.0
+github.com/fatih/color
 # github.com/gin-contrib/sse v0.1.0
 github.com/gin-contrib/sse
 # github.com/gin-gonic/gin v1.6.3
@@ -62,17 +64,6 @@ github.com/go-openapi/strfmt
 github.com/go-openapi/swag
 # github.com/go-openapi/validate v0.20.0
 github.com/go-openapi/validate
-# github.com/go-pg/pg/v10 v10.10.1
-## explicit
-github.com/go-pg/pg/v10
-github.com/go-pg/pg/v10/internal
-github.com/go-pg/pg/v10/internal/parser
-github.com/go-pg/pg/v10/internal/pool
-github.com/go-pg/pg/v10/orm
-github.com/go-pg/pg/v10/pgjson
-github.com/go-pg/pg/v10/types
-# github.com/go-pg/zerochecker v0.2.0
-github.com/go-pg/zerochecker
 # github.com/go-playground/locales v0.13.0
 github.com/go-playground/locales
 github.com/go-playground/locales/currency
@@ -94,6 +85,7 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/google/go-cmp v0.5.5
+## explicit
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
@@ -120,6 +112,8 @@ github.com/leodido/go-urn
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
+# github.com/mattn/go-colorable v0.1.8
+github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
@@ -183,16 +177,30 @@ github.com/square/go-jose
 github.com/tmthrgd/go-hex
 # github.com/ugorji/go/codec v1.1.7
 github.com/ugorji/go/codec
-# github.com/vmihailenco/bufpool v0.1.11
-github.com/vmihailenco/bufpool
-# github.com/vmihailenco/msgpack/v5 v5.3.4
+# github.com/uptrace/bun v1.0.3
 ## explicit
+github.com/uptrace/bun
+github.com/uptrace/bun/dialect
+github.com/uptrace/bun/dialect/feature
+github.com/uptrace/bun/dialect/sqltype
+github.com/uptrace/bun/extra/bunjson
+github.com/uptrace/bun/internal
+github.com/uptrace/bun/internal/parser
+github.com/uptrace/bun/internal/tagparser
+github.com/uptrace/bun/migrate
+github.com/uptrace/bun/schema
+# github.com/uptrace/bun/dialect/pgdialect v1.0.3
+## explicit
+github.com/uptrace/bun/dialect/pgdialect
+# github.com/uptrace/bun/driver/pgdriver v1.0.3
+## explicit
+github.com/uptrace/bun/driver/pgdriver
+# github.com/uptrace/bun/extra/bundebug v1.0.3
+## explicit
+github.com/uptrace/bun/extra/bundebug
+# github.com/vmihailenco/msgpack/v5 v5.3.4
 github.com/vmihailenco/msgpack/v5
 github.com/vmihailenco/msgpack/v5/msgpcode
-# github.com/vmihailenco/tagparser v0.1.2
-github.com/vmihailenco/tagparser
-github.com/vmihailenco/tagparser/internal
-github.com/vmihailenco/tagparser/internal/parser
 # github.com/vmihailenco/tagparser/v2 v2.0.0
 github.com/vmihailenco/tagparser/v2
 github.com/vmihailenco/tagparser/v2/internal
@@ -428,5 +436,7 @@ gopkg.in/square/go-jose.v2/cipher
 gopkg.in/square/go-jose.v2/json
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+## explicit
 # mellium.im/sasl v0.2.1
 mellium.im/sasl

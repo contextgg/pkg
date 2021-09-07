@@ -64,7 +64,6 @@ type Store interface {
 	Load(ctx context.Context, id string, forced bool) (Entity, error)
 	Save(ctx context.Context, aggregate Entity) error
 	Delete(ctx context.Context, aggregate Entity) error
-	RunInTransaction(ctx context.Context, fn func(Store) error) error
 }
 
 type store struct {
@@ -211,31 +210,6 @@ func (s *store) Delete(ctx context.Context, entity Entity) error {
 	default:
 		return s.deleteEntity(ctx, agg)
 	}
-}
-
-func (s *store) RunInTransaction(ctx context.Context, fn func(Store) error) error {
-	tx, err := s.data.BeginContext(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	// store ..
-	imp := &store{
-		data:         tx,
-		eventHandler: s.eventHandler,
-		factory:      s.factory,
-
-		revision:       s.revision,
-		minVersionDiff: s.minVersionDiff,
-		project:        s.project,
-	}
-
-	if err := fn(imp); err != nil {
-		return err
-	}
-
-	return tx.Commit(ctx)
 }
 
 // NewStore for creating stores

@@ -2,111 +2,116 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
-	"github.com/go-pg/pg/v10/orm"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/migrate"
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
-	"github.com/contextgg/pkg/pgdb"
 	"github.com/contextgg/pkg/types"
 )
 
 type event struct {
-	Namespace     string `pg:",pk"`
-	AggregateID   string `pg:",pk,type:uuid"`
-	AggregateType string `pg:",pk"`
-	Version       int    `pg:",pk"`
-	Type          string `pg:",notnull"`
+	Namespace     string `bun:",pk"`
+	AggregateID   string `bun:",pk,type:uuid"`
+	AggregateType string `bun:",pk"`
+	Version       int    `bun:",pk"`
+	Type          string `bun:",notnull"`
 	Timestamp     time.Time
 	Data          json.RawMessage
 	Metadata      map[string]interface{}
 }
 type snapshot struct {
-	Namespace string          `pg:",pk"`
-	ID        string          `pg:",pk,type:uuid"`
-	Type      string          `pg:",pk"`
-	Revision  string          `pg:",pk"`
-	Aggregate json.RawMessage `pg:",notnull"`
+	Namespace string          `bun:",pk"`
+	ID        string          `bun:",pk,type:uuid"`
+	Type      string          `bun:",pk"`
+	Revision  string          `bun:",pk"`
+	Aggregate json.RawMessage `bun:",notnull"`
 }
 
-func isNoRow(err error) bool {
-	return err.Error() == "pg: no rows in result set"
-}
+func run(db *bun.DB, opts *es.DataOpts) error {
+	var models []interface{}
 
-func run(db pgdb.DB, opts *es.DataOpts) error {
-	tableOpts := &orm.CreateTableOptions{
-		IfNotExists: true,
+	if opts.HasEvents {
+		models = append(models, &event{})
+	}
+	if opts.HasSnapshots {
+		models = append(models, &snapshot{})
+	}
+	for _, model := range opts.ExtraModels {
+		models = append(models, model)
 	}
 
 	ctx := context.Background()
-	if opts.Events {
-		if err := db.ModelContext(ctx, &event{}).CreateTable(tableOpts); err != nil {
+	for _, model := range models {
+		if opts.TruncateTables {
+			_, err := db.NewTruncateTable().Model(model).Exec(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		if opts.RecreateTables {
+			_, err := db.NewDropTable().Model(model).IfExists().Exec(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		_, err := db.NewCreateTable().Model(model).Exec(ctx)
+		if err != nil {
 			return err
 		}
 	}
-	if opts.Snapshots {
-		if err := db.ModelContext(ctx, &snapshot{}).CreateTable(tableOpts); err != nil {
-			return err
-		}
-	}
-	for _, model := range opts.Entities {
-		if err := db.ModelContext(ctx, model).CreateTable(tableOpts); err != nil {
-			return err
-		}
-	}
-	return nil
+
+	migrations := migrate.NewMigrations()
+	// TODO register migrations!
+
+	migrator := migrate.NewMigrator(db, migrations)
+	_, err := migrator.Migrate(ctx)
+	return err
 }
 
-func NewPostgresData(db pgdb.DB, opts ...*es.DataOpts) es.Data {
-	return NewPostgresDataWithLegacy(db, false, opts...)
-}
-func NewPostgresDataWithLegacy(db pgdb.DB, legacy bool, opts ...*es.DataOpts) es.Data {
+func NewPostgresData(db *bun.DB, opts ...es.DataOption) es.Data {
+	all := &es.DataOpts{}
 	for _, o := range opts {
-		if err := run(db, o); err != nil {
-			panic(err)
-		}
+		o(all)
+	}
+
+	// run the migrations?
+	if err := run(db, all); err != nil {
+		panic(err)
 	}
 
 	return &data{
-		db:     db,
-		legacy: legacy,
+		db: db,
 	}
 }
 
 type data struct {
-	db     pgdb.DB
+	db     bun.IDB
 	legacy bool
-}
-
-func (s *data) BeginContext(ctx context.Context) (es.Transaction, error) {
-	_, err := s.db.BeginContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
-}
-
-func (s *data) Commit(ctx context.Context) error {
-	return s.db.CommitContext(ctx)
-}
-func (s *data) Rollback(ctx context.Context) error {
-	return s.db.RollbackContext(ctx)
 }
 
 func (s *data) SaveEntity(ctx context.Context, namespace string, entity es.Entity) error {
 	entity.SetNamespace(namespace)
-	_, err := s.db.ModelContext(ctx, entity).
-		OnConflict("(namespace, id) DO UPDATE").
-		Insert()
+
+	_, err := s.db.NewInsert().
+		Model(entity).
+		On("CONFLICT (namespace, id) DO UPDATE").
+		Exec(ctx)
 	return err
 }
 func (s *data) DeleteEntry(ctx context.Context, namespace string, entity es.Entity) error {
 	entity.SetNamespace(namespace)
-	_, err := s.db.ModelContext(ctx, entity).
+
+	_, err := s.db.NewDelete().
+		Model(entity).
 		WherePK().
-		Delete()
+		Exec(ctx)
 	return err
 }
 func (s *data) SaveSnapshot(ctx context.Context, namespace string, rev string, agg es.AggregateSourced) error {
@@ -123,11 +128,11 @@ func (s *data) SaveSnapshot(ctx context.Context, namespace string, rev string, a
 		Revision:  rev,
 		Aggregate: json.RawMessage(data),
 	}
-	if _, err := s.db.ModelContext(ctx, ss).
-		OnConflict("(namespace,id,type,revision) DO UPDATE").
-		Insert(); err != nil {
-		return err
-	}
+
+	_, err = s.db.NewInsert().
+		Model(ss).
+		On("CONFLICT (namespace,id,type,revision) DO UPDATE").
+		Exec(ctx)
 	return nil
 }
 func (s *data) SaveEvents(ctx context.Context, namespace string, evts ...events.Event) error {
@@ -152,21 +157,27 @@ func (s *data) SaveEvents(ctx context.Context, namespace string, evts ...events.
 	}
 
 	// save em
-	if _, err := s.db.ModelContext(ctx, &all).
-		OnConflict("(namespace, aggregate_id, aggregate_type, version) DO UPDATE").
-		Insert(); err != nil {
+	if _, err := s.db.NewInsert().
+		Model(&all).
+		On("CONFLICT (namespace, aggregate_id, aggregate_type, version) DO UPDATE").
+		Exec(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 func (s *data) LoadEntity(ctx context.Context, namespace string, entity es.Entity) error {
 	entity.SetNamespace(namespace)
-	if err := s.db.ModelContext(ctx, entity).WherePK().Select(); err != nil {
-		if isNoRow(err) {
+
+	if err := s.db.NewSelect().
+		Model(entity).
+		WherePK().
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
 			return es.ErrNoRows
 		}
 		return err
 	}
+
 	return nil
 }
 func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, agg es.AggregateSourced) error {
@@ -176,13 +187,16 @@ func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, a
 		Type:      agg.GetTypeName(),
 		Revision:  rev,
 	}
-	if err := s.db.ModelContext(ctx, ss).WherePK().Select(); err != nil {
-		if isNoRow(err) {
+
+	if err := s.db.NewSelect().
+		Model(ss).
+		WherePK().
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
 			return nil
 		}
 		return err
 	}
-
 	if _, err := types.Unmarshal(agg, ss.Aggregate, true); err != nil {
 		return err
 	}
@@ -191,12 +205,16 @@ func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, a
 func (s *data) LoadEventsByType(ctx context.Context, namespace string, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
-	if err := s.db.
-		ModelContext(ctx, &evts).
+
+	if err := s.db.NewSelect().
+		Model(&evts).
 		Where("namespace = ?", namespace).
 		Where("aggregate_type = ?", aggregateTypeName).
-		WhereIn("type IN (?)", eventTypeNames).
-		Select(); err != nil {
+		Where("type IN (?)", bun.In(eventTypeNames)).
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
+			return nil, es.ErrNoRows
+		}
 		return nil, err
 	}
 
@@ -222,13 +240,16 @@ func (s *data) LoadEventsByType(ctx context.Context, namespace string, aggregate
 func (s *data) LoadUniqueEvents(ctx context.Context, namespace string, typeName string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
-	if err := s.db.
-		ModelContext(ctx, &evts).
+	if err := s.db.NewSelect().
+		Model(&evts).
 		Where("namespace = ?", namespace).
 		Where("aggregate_type = ?", typeName).
 		Where("version = ?", 1).
 		Order("version").
-		Select(); err != nil {
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
+			return nil, es.ErrNoRows
+		}
 		return nil, err
 	}
 
@@ -254,11 +275,14 @@ func (s *data) LoadUniqueEvents(ctx context.Context, namespace string, typeName 
 func (s *data) LoadAllEvents(ctx context.Context, namespace string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
-	if err := s.db.
-		ModelContext(ctx, &evts).
+	if err := s.db.NewSelect().
+		Model(&evts).
 		Where("namespace = ?", namespace).
 		Order("aggregate_type", "version").
-		Select(); err != nil {
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
+			return nil, es.ErrNoRows
+		}
 		return nil, err
 	}
 
@@ -284,14 +308,17 @@ func (s *data) LoadAllEvents(ctx context.Context, namespace string) ([]events.Ev
 func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeName string, version int) (*events.Event, error) {
 	// Select all users.
 	var evt event
-	if err := s.db.
-		ModelContext(ctx, &evt).
+	if err := s.db.NewSelect().
+		Model(&evt).
 		Where("namespace = ?", namespace).
 		Where("aggregate_id = ?", id).
 		Where("aggregate_type = ?", typeName).
 		Where("version = ?", version).
 		Order("version").
-		Select(); err != nil {
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
+			return nil, es.ErrNoRows
+		}
 		return nil, err
 	}
 
@@ -313,14 +340,17 @@ func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeN
 func (s *data) LoadEvents(ctx context.Context, namespace string, id string, typeName string, fromVersion int) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
-	if err := s.db.
-		ModelContext(ctx, &evts).
+	if err := s.db.NewSelect().
+		Model(&evts).
 		Where("namespace = ?", namespace).
 		Where("aggregate_id = ?", id).
 		Where("aggregate_type = ?", typeName).
 		Where("version > ?", fromVersion).
 		Order("version").
-		Select(); err != nil {
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
+			return nil, es.ErrNoRows
+		}
 		return nil, err
 	}
 

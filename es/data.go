@@ -9,31 +9,46 @@ import (
 
 var ErrNoRows = errors.New("No rows found")
 
+type DataOption func(d *DataOpts)
+
 type DataOpts struct {
-	Snapshots bool
-	Events    bool
-	Entities  []Entity
+	RecreateTables bool
+	TruncateTables bool
+	HasEvents      bool
+	HasSnapshots   bool
+	ExtraModels    []interface{}
 }
 
-func InitializeSnapshots() *DataOpts {
-	return &DataOpts{
-		Snapshots: true,
+func InitializeSnapshots() DataOption {
+	return func(o *DataOpts) {
+		o.HasSnapshots = true
 	}
 }
-func InitializeEvents() *DataOpts {
-	return &DataOpts{
-		Events: true,
+func InitializeEvents() DataOption {
+	return func(o *DataOpts) {
+		o.HasEvents = true
 	}
 }
-func InitializeEntities(entities ...Entity) *DataOpts {
-	return &DataOpts{
-		Entities: entities,
+func InitializeEntities(entities ...Entity) DataOption {
+	return func(o *DataOpts) {
+		for _, ent := range entities {
+			o.ExtraModels = append(o.ExtraModels, ent)
+		}
+	}
+}
+func WithTruncate() DataOption {
+	return func(o *DataOpts) {
+		o.TruncateTables = true
+	}
+}
+func WithRecreate() DataOption {
+	return func(o *DataOpts) {
+		o.RecreateTables = true
 	}
 }
 
 // Data for all
 type Data interface {
-	BeginContext(ctx context.Context) (Transaction, error)
 	LoadEntity(ctx context.Context, namespace string, entity Entity) error
 	SaveEntity(ctx context.Context, namespace string, entity Entity) error
 	DeleteEntry(ctx context.Context, namespace string, entity Entity) error

@@ -2,27 +2,30 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"testing"
+
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
+	"github.com/uptrace/bun/extra/bundebug"
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
 	"github.com/contextgg/pkg/ns"
-	"github.com/contextgg/pkg/pgdb"
 )
 
-func createDb() pgdb.DB {
-	db, err := pgdb.SetupPostgres("postgresql://localhost:5432/dev?sslmode=disable", "test", "contextgg", "mysecret")
-	if err != nil {
-		panic(err)
-	}
+func createDb() *bun.DB {
+	conn := pgdriver.NewConnector(
+		pgdriver.WithDSN("postgresql://localhost:5432/dev?sslmode=disable"),
+		pgdriver.WithDatabase("testDb"),
+		pgdriver.WithUser("contextgg"),
+		pgdriver.WithPassword("mysecret"),
+	)
 
-	db.Exec(`
-	DROP SCHEMA public CASCADE;
-	CREATE SCHEMA public;
-
-	GRANT ALL ON SCHEMA public TO contextgg;
-	GRANT ALL ON SCHEMA public TO public;
-	`)
+	sqldb := sql.OpenDB(conn)
+	db := bun.NewDB(sqldb, pgdialect.New())
+	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose()))
 	return db
 }
 
