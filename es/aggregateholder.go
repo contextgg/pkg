@@ -17,8 +17,8 @@ type AggregateHolder interface {
 
 // BaseAggregateHolder to make our commands smaller
 type BaseAggregateHolder struct {
-	Namespace string `pg:",pk"`
-	Id        string `pg:",pk,type:uuid"`
+	Namespace string `bun:",pk"`
+	Id        string `bun:",pk,type:uuid"`
 
 	typeName string
 	events   []events.Event

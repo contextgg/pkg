@@ -137,7 +137,7 @@ func (s *data) SaveSnapshot(ctx context.Context, namespace string, rev string, a
 		Model(ss).
 		On("CONFLICT (namespace,id,type,revision) DO UPDATE").
 		Exec(ctx)
-	return nil
+	return err
 }
 func (s *data) SaveEvents(ctx context.Context, namespace string, evts ...events.Event) error {
 	all := make([]event, len(evts))

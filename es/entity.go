@@ -1,9 +1,5 @@
 package es
 
-func IsPQNoRow(err error) bool {
-	return err != nil && err.Error() == "pg: no rows in result set"
-}
-
 // EntityFunc for creating an entity
 type EntityFunc func(string) Entity
 

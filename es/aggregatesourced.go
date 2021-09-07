@@ -42,9 +42,9 @@ type AggregateSourced interface {
 
 // BaseAggregateSourced to make our commands smaller
 type BaseAggregateSourced struct {
-	Namespace string `pg:",pk" json:"-"`
-	Id        string `pg:",pk,type:uuid"`
-	Version   int    `pg:"-"`
+	Namespace string `bun:",pk" json:"-"`
+	Id        string `bun:",pk,type:uuid"`
+	Version   int    `bun:"-"`
 
 	typeName string
 	events   []events.Event
