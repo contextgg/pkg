@@ -71,8 +71,12 @@ func run(db *bun.DB, opts *es.DataOpts) error {
 	// TODO register migrations!
 
 	migrator := migrate.NewMigrator(db, migrations)
-	_, err := migrator.Migrate(ctx)
-	return err
+	if _, err := migrator.Migrate(ctx); err != nil {
+		if err.Error() != "migrate: there are no any migrations" {
+			return err
+		}
+	}
+	return nil
 }
 
 func NewPostgresData(db *bun.DB, opts ...es.DataOption) es.Data {

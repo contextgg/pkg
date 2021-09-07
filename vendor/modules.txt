@@ -177,7 +177,7 @@ github.com/square/go-jose
 github.com/tmthrgd/go-hex
 # github.com/ugorji/go/codec v1.1.7
 github.com/ugorji/go/codec
-# github.com/uptrace/bun v1.0.3
+# github.com/uptrace/bun v1.0.4-0.20210907112119-b36fdb70af63
 ## explicit
 github.com/uptrace/bun
 github.com/uptrace/bun/dialect
@@ -273,7 +273,7 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+# golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
