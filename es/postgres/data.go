@@ -62,7 +62,7 @@ func run(db *bun.DB, opts *es.DataOpts) error {
 			}
 		}
 
-		_, err := db.NewCreateTable().Model(model).Exec(ctx)
+		_, err := db.NewCreateTable().Model(model).IfNotExists().Exec(ctx)
 		if err != nil {
 			return err
 		}
