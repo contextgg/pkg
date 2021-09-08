@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -68,7 +69,13 @@ func run(db *bun.DB, opts *es.DataOpts) error {
 	}
 
 	migrations := migrate.NewMigrations()
-	// TODO register migrations!
+	for _, item := range opts.Migrations {
+		m, ok := item.(migrate.Migration)
+		if !ok {
+			return fmt.Errorf("Invalid type of migration")
+		}
+		migrations.Add(m)
+	}
 
 	migrator := migrate.NewMigrator(db, migrations)
 	if _, err := migrator.Migrate(ctx); err != nil {
