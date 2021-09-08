@@ -68,21 +68,29 @@ func run(db *bun.DB, opts *es.DataOpts) error {
 		}
 	}
 
-	migrations := migrate.NewMigrations()
-	for _, item := range opts.Migrations {
-		m, ok := item.(migrate.Migration)
-		if !ok {
-			return fmt.Errorf("Invalid type of migration")
+	if len(opts.Migrations) > 0 {
+		migrations := migrate.NewMigrations()
+		for _, item := range opts.Migrations {
+			m, ok := item.(migrate.Migration)
+			if !ok {
+				return fmt.Errorf("Invalid type of migration")
+			}
+			migrations.Add(m)
 		}
-		migrations.Add(m)
-	}
 
-	migrator := migrate.NewMigrator(db, migrations)
-	if _, err := migrator.Migrate(ctx); err != nil {
-		if err.Error() != "migrate: there are no any migrations" {
+		migrator := migrate.NewMigrator(db, migrations)
+
+		// init the migrations
+		if err := migrator.Init(ctx); err != nil {
+			return err
+		}
+
+		// run the migrations
+		if _, err := migrator.Migrate(ctx); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
