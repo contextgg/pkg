@@ -51,8 +51,7 @@ func getSubscription(l logger.Logger, ctx context.Context, cli *pubsub.Client, a
 	return sub, nil
 }
 
-// Publisher pubsub
-type Publisher struct {
+type publisher struct {
 	l             logger.Logger
 	client        *pubsub.Client
 	subscriptions []*pubsub.Subscription
@@ -78,7 +77,7 @@ func NewPublisher(l logger.Logger, eventBus es.EventBus, appId string, projectID
 		return nil, fmt.Errorf("getTopic: %v", err)
 	}
 
-	p := &Publisher{
+	p := &publisher{
 		l:        l,
 		client:   cli,
 		topic:    topic,
@@ -106,7 +105,7 @@ func NewPublisher(l logger.Logger, eventBus es.EventBus, appId string, projectID
 }
 
 // PublishEvent via pubsub
-func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error {
+func (c *publisher) PublishEvent(ctx context.Context, event events.Event) error {
 	data, err := c.codec.MarshalEvent(ctx, &event)
 	if err != nil {
 		c.l.Error("json.Marshal", "err", err)
@@ -126,25 +125,25 @@ func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error 
 	return nil
 }
 
-func (c *Publisher) Errors() <-chan es.EventBusError {
+func (c *publisher) Errors() <-chan es.EventBusError {
 	return c.errCh
 }
 
-func (c *Publisher) Start() {
+func (c *publisher) Start() {
 	for _, sub := range c.subscriptions {
 		go c.handle(sub)
 	}
 }
 
 // Close underlying connection
-func (c *Publisher) Close() {
+func (c *publisher) Close() {
 	if c.client != nil {
 		c.l.Debug("Closing the pubsub connection")
 		c.client.Close()
 	}
 }
 
-func (c *Publisher) subscription(ctx context.Context, appId, topicName string) error {
+func (c *publisher) subscription(ctx context.Context, appId, topicName string) error {
 	sub, err := getSubscription(c.l, ctx, c.client, appId, topicName)
 	if err != nil {
 		return err
@@ -154,7 +153,7 @@ func (c *Publisher) subscription(ctx context.Context, appId, topicName string) e
 	return nil
 }
 
-func (c *Publisher) handle(sub *pubsub.Subscription) {
+func (c *publisher) handle(sub *pubsub.Subscription) {
 	for {
 		ctx := context.Background()
 		if err := sub.Receive(ctx, c.handler); err != context.Canceled {
@@ -167,7 +166,7 @@ func (c *Publisher) handle(sub *pubsub.Subscription) {
 	}
 }
 
-func (c *Publisher) handler(ctx context.Context, msg *pubsub.Message) {
+func (c *publisher) handler(ctx context.Context, msg *pubsub.Message) {
 	evt, ctx, err := c.codec.UnmarshalEvent(ctx, msg.Data)
 	if err != nil {
 		select {

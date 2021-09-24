@@ -10,7 +10,7 @@ import (
 	"github.com/contextgg/pkg/types"
 )
 
-type evt struct {
+type EventWithContext struct {
 	AggregateID   string                 `json:"aggregate_id"`
 	AggregateType string                 `json:"aggregate_type"`
 	Version       int                    `json:"version"`
@@ -27,7 +27,7 @@ type EventCodec struct{}
 
 // MarshalEvent marshals an event into bytes in JSON format.
 func (c *EventCodec) MarshalEvent(ctx context.Context, event *events.Event) ([]byte, error) {
-	e := evt{
+	e := EventWithContext{
 		AggregateID:   event.AggregateID,
 		AggregateType: event.AggregateType,
 		Version:       event.Version,
@@ -50,7 +50,7 @@ func (c *EventCodec) MarshalEvent(ctx context.Context, event *events.Event) ([]b
 // UnmarshalEvent unmarshals an event and supported parts of context from bytes.
 func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (*events.Event, context.Context, error) {
 	out := struct {
-		*evt
+		*EventWithContext
 
 		Data json.RawMessage `json:"data"`
 	}{}
