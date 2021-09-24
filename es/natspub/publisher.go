@@ -41,7 +41,7 @@ func NewPublisher(l logger.Logger, eventBus es.EventBus, natsUrl string, appId s
 		var err error
 		nc, err = nats.Connect(natsUrl)
 		if err != nil {
-			l.Info("Could not connect to nats server: %s will retry after %d seconds", err, b.NextBackOff()/time.Second)
+			l.Info("Could not connect to nats server", "err", err, "next", b.NextBackOff()/time.Second)
 			return err
 		}
 		return nil
@@ -49,7 +49,7 @@ func NewPublisher(l logger.Logger, eventBus es.EventBus, natsUrl string, appId s
 
 	err := backoff.Retry(tryConnect, b)
 	if err != nil {
-		l.Error("BackOff stopped retrying with Error '%s'", err)
+		l.Error("BackOff stopped retrying with Error", "err", err)
 		return nil, err
 	}
 
@@ -115,10 +115,17 @@ func (c *publisher) Start() {
 func (c *publisher) handle(sub *nats.Subscription) {
 	for {
 		msg, err := sub.NextMsg(10 * time.Second)
+		if err == nats.ErrTimeout {
+			continue
+		}
+
 		if err != nil {
 			c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not receive: %v", err)}
 		}
-		c.handler(msg)
+
+		if msg != nil {
+			c.handler(msg)
+		}
 	}
 }
 
