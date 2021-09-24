@@ -111,9 +111,9 @@ func (b *eventBus) HandleEvent(ctx context.Context, evt events.Event) error {
 		return err
 	}
 
+	isPublisher := IsPublisherFromContext(ctx)
 	notLocal := MatchNotLocal()
-	notPublisher := MatchNotPublisher()
-	if !notLocal(evt) || !notPublisher(evt) {
+	if !notLocal(evt) || isPublisher {
 		return nil
 	}
 

@@ -1,43 +1,34 @@
 package pubsub
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/rs/zerolog/log"
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
-	"github.com/contextgg/pkg/ns"
+	"github.com/contextgg/pkg/events/json"
+	"github.com/contextgg/pkg/logger"
 )
 
-func getTopic(ctx context.Context, cli *pubsub.Client, topicName string) (*pubsub.Topic, error) {
+func getTopic(l logger.Logger, ctx context.Context, cli *pubsub.Client, topicName string) (*pubsub.Topic, error) {
 	topic := cli.Topic(topicName)
 	if ok, err := topic.Exists(ctx); err != nil {
-		log.
-			Error().
-			Err(err).
-			Msg("topic.Exists")
+		l.Error("topic.Exists", "err", err)
 		return nil, err
 	} else if !ok {
 		if topic, err = cli.CreateTopic(ctx, topicName); err != nil {
-			log.
-				Error().
-				Err(err).
-				Str("topicName", topicName).
-				Msg("cli.CreateTopic")
+			l.Error("cli.CreateTopic", "topicName", topicName)
 			return nil, err
 		}
 	}
 	return topic, nil
 }
 
-func getSubscription(ctx context.Context, cli *pubsub.Client, appId, topicName string) (*pubsub.Subscription, error) {
-	topic, err := getTopic(ctx, cli, topicName)
+func getSubscription(l logger.Logger, ctx context.Context, cli *pubsub.Client, appId, topicName string) (*pubsub.Subscription, error) {
+	topic, err := getTopic(l, ctx, cli, topicName)
 	if err != nil {
 		return nil, err
 	}
@@ -62,44 +53,38 @@ func getSubscription(ctx context.Context, cli *pubsub.Client, appId, topicName s
 
 // Publisher pubsub
 type Publisher struct {
+	l             logger.Logger
 	client        *pubsub.Client
 	subscriptions []*pubsub.Subscription
 	topic         *pubsub.Topic
 	eventBus      es.EventBus
 	errCh         chan es.EventBusError
+	codec         events.EventCodec
 }
 
 // NewPublisher creates a publisher and subscribes
-func NewPublisher(eventBus es.EventBus, appId string, projectID string, topicName string, listeners ...string) (es.EventPublisher, error) {
+func NewPublisher(l logger.Logger, eventBus es.EventBus, appId string, projectID string, topicName string, listeners ...string) (es.EventPublisher, error) {
 	ctx := context.Background()
 
 	cli, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
-		log.
-			Error().
-			Err(err).
-			Str("projectID", projectID).
-			Str("topicName", topicName).
-			Msg("pubsub.NewClient")
+		l.Error("pubsub.NewClient", "err", err, "projectID", projectID, "topicName", topicName)
 		return nil, fmt.Errorf("pubsub.NewClient: %v", err)
 	}
 
-	topic, err := getTopic(ctx, cli, topicName)
+	topic, err := getTopic(l, ctx, cli, topicName)
 	if err != nil {
-		log.
-			Error().
-			Err(err).
-			Str("projectID", projectID).
-			Str("topicName", topicName).
-			Msg("getTopic")
+		l.Error("getTopic", "err", err, "projectID", projectID, "topicName", topicName)
 		return nil, fmt.Errorf("getTopic: %v", err)
 	}
 
 	p := &Publisher{
+		l:        l,
 		client:   cli,
 		topic:    topic,
 		eventBus: eventBus,
 		errCh:    make(chan es.EventBusError, 1),
+		codec:    &json.EventCodec{},
 	}
 
 	for _, l := range listeners {
@@ -122,40 +107,22 @@ func NewPublisher(eventBus es.EventBus, appId string, projectID string, topicNam
 
 // PublishEvent via pubsub
 func (c *Publisher) PublishEvent(ctx context.Context, event events.Event) error {
-	msg, err := json.Marshal(event)
+	data, err := c.codec.MarshalEvent(ctx, &event)
 	if err != nil {
-		log.
-			Error().
-			Err(err).
-			Msg("json.Marshal")
+		c.l.Error("json.Marshal", "err", err)
 		return err
-	}
-
-	namespace := ns.FromContext(ctx)
-	attrs := map[string]string{
-		"namespace": namespace,
 	}
 
 	publishCtx := context.Background()
-	res := c.topic.Publish(publishCtx, &pubsub.Message{
-		Data:       msg,
-		Attributes: attrs,
+	res := c.topic.Publish(ctx, &pubsub.Message{
+		Data: data,
 	})
 	if _, err := res.Get(publishCtx); err != nil {
-		log.
-			Error().
-			Err(err).
-			Msg("Could not publish event")
+		c.l.Error("Could not publish event", "err", err)
 		return err
 	}
 
-	log.
-		Debug().
-		Str("topic_id", c.topic.ID()).
-		Str("event_type", event.Type).
-		Str("event_aggregate_id", event.AggregateID).
-		Str("event_aggregate_type", event.AggregateType).
-		Msg("Event Published via GCP pub/sub")
+	c.l.Debug("Event Published via GCP pub/sub", "topic_id", c.topic.ID(), "event_type", event.Type, "event_aggregate_id", event.AggregateID, "event_aggregate_type", event.AggregateType)
 	return nil
 }
 
@@ -172,15 +139,13 @@ func (c *Publisher) Start() {
 // Close underlying connection
 func (c *Publisher) Close() {
 	if c.client != nil {
-		log.
-			Debug().
-			Msg("Closing the pubsub connection")
+		c.l.Debug("Closing the pubsub connection")
 		c.client.Close()
 	}
 }
 
 func (c *Publisher) subscription(ctx context.Context, appId, topicName string) error {
-	sub, err := getSubscription(ctx, c.client, appId, topicName)
+	sub, err := getSubscription(c.l, ctx, c.client, appId, topicName)
 	if err != nil {
 		return err
 	}
@@ -203,8 +168,7 @@ func (c *Publisher) handle(sub *pubsub.Subscription) {
 }
 
 func (c *Publisher) handler(ctx context.Context, msg *pubsub.Message) {
-	r := bytes.NewReader(msg.Data)
-	evt, err := events.EventDecoder(r)
+	evt, ctx, err := c.codec.UnmarshalEvent(ctx, msg.Data)
 	if err != nil {
 		select {
 		case c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not unmarshal event: %s", err.Error()), Ctx: ctx}:
@@ -214,18 +178,10 @@ func (c *Publisher) handler(ctx context.Context, msg *pubsub.Message) {
 		return
 	}
 
-	handlerCtx := ctx
-	if msg.Attributes != nil {
-		namespace, ok := msg.Attributes["namespace"]
-		if ok && len(namespace) > 0 {
-			handlerCtx = ns.SetNamespace(ctx, namespace)
-		}
-	}
-
-	evt.Metadata["publisher"] = true
+	ctx = es.SetIsPublisher(ctx)
 
 	// Notify all observers about the event.
-	if err := c.eventBus.HandleEvent(handlerCtx, *evt); err != nil {
+	if err := c.eventBus.HandleEvent(ctx, *evt); err != nil {
 		select {
 		case c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not handle event: %s", err.Error()), Ctx: ctx, Event: evt}:
 		default:
