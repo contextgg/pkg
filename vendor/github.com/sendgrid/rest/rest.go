@@ -3,13 +3,14 @@ package rest
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 )
 
 // Version represents the current version of the rest library
-const Version = "2.6.2"
+const Version = "2.6.5"
 
 // Method contains the supported HTTP verbs.
 type Method string
@@ -113,7 +114,12 @@ func API(request Request) (*Response, error) {
 
 // Send uses the DefaultClient to send your request
 func Send(request Request) (*Response, error) {
-	return DefaultClient.Send(request)
+	return SendWithContext(context.Background(), request)
+}
+
+// SendWithContext uses the DefaultClient to send your request with the provided context.
+func SendWithContext(ctx context.Context, request Request) (*Response, error) {
+	return DefaultClient.SendWithContext(ctx, request)
 }
 
 // The following functions enable the ability to define a
@@ -131,11 +137,18 @@ func (c *Client) API(request Request) (*Response, error) {
 
 // Send will build your request, make the request, and build your response.
 func (c *Client) Send(request Request) (*Response, error) {
+	return c.SendWithContext(context.Background(), request)
+}
+
+// SendWithContext will build your request passing in the provided context, make the request, and build your response.
+func (c *Client) SendWithContext(ctx context.Context, request Request) (*Response, error) {
 	// Build the HTTP request object.
 	req, err := BuildRequestObject(request)
 	if err != nil {
 		return nil, err
 	}
+	// Pass in the user provided context
+	req = req.WithContext(ctx)
 
 	// Build the HTTP client and make the request.
 	res, err := c.MakeRequest(req)

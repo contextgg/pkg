@@ -297,7 +297,7 @@ func (q *SelectQuery) Relation(name string, apply ...func(*SelectQuery) *SelectQ
 		return q
 	}
 
-	join := q.tableModel.Join(name)
+	join := q.tableModel.join(name)
 	if join == nil {
 		q.setErr(fmt.Errorf("%s does not have relation=%q", q.table, name))
 		return q
@@ -310,14 +310,14 @@ func (q *SelectQuery) Relation(name string, apply ...func(*SelectQuery) *SelectQ
 	return q
 }
 
-func (q *SelectQuery) forEachHasOneJoin(fn func(*relationJoin) error) error {
+func (q *SelectQuery) forEachInlineRelJoin(fn func(*relationJoin) error) error {
 	if q.tableModel == nil {
 		return nil
 	}
-	return q._forEachHasOneJoin(fn, q.tableModel.GetJoins())
+	return q._forEachInlineRelJoin(fn, q.tableModel.getJoins())
 }
 
-func (q *SelectQuery) _forEachHasOneJoin(fn func(*relationJoin) error, joins []relationJoin) error {
+func (q *SelectQuery) _forEachInlineRelJoin(fn func(*relationJoin) error, joins []relationJoin) error {
 	for i := range joins {
 		j := &joins[i]
 		switch j.Relation.Type {
@@ -325,7 +325,7 @@ func (q *SelectQuery) _forEachHasOneJoin(fn func(*relationJoin) error, joins []r
 			if err := fn(j); err != nil {
 				return err
 			}
-			if err := q._forEachHasOneJoin(fn, j.JoinModel.GetJoins()); err != nil {
+			if err := q._forEachInlineRelJoin(fn, j.JoinModel.getJoins()); err != nil {
 				return err
 			}
 		}
@@ -341,7 +341,7 @@ func (q *SelectQuery) selectJoins(ctx context.Context, joins []relationJoin) err
 
 		switch j.Relation.Type {
 		case schema.HasOneRelation, schema.BelongsToRelation:
-			err = q.selectJoins(ctx, j.JoinModel.GetJoins())
+			err = q.selectJoins(ctx, j.JoinModel.getJoins())
 		case schema.HasManyRelation:
 			err = j.selectMany(ctx, q.db.NewSelect())
 		case schema.ManyToManyRelation:
@@ -358,6 +358,10 @@ func (q *SelectQuery) selectJoins(ctx context.Context, joins []relationJoin) err
 }
 
 //------------------------------------------------------------------------------
+
+func (q *SelectQuery) Operation() string {
+	return "SELECT"
+}
 
 func (q *SelectQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
 	return q.appendQuery(fmter, b, false)
@@ -419,7 +423,7 @@ func (q *SelectQuery) appendQuery(
 		}
 	}
 
-	if err := q.forEachHasOneJoin(func(j *relationJoin) error {
+	if err := q.forEachInlineRelJoin(func(j *relationJoin) error {
 		b = append(b, ' ')
 		b, err = j.appendHasOneJoin(fmter, b, q)
 		return err
@@ -523,7 +527,7 @@ func (q *SelectQuery) appendColumns(fmter schema.Formatter, b []byte) (_ []byte,
 				b = append(b, ", "...)
 			}
 
-			if col.Args == nil {
+			if col.Args == nil && q.table != nil {
 				if field, ok := q.table.FieldMap[col.Query]; ok {
 					b = append(b, q.table.SQLAlias...)
 					b = append(b, '.')
@@ -549,13 +553,13 @@ func (q *SelectQuery) appendColumns(fmter schema.Formatter, b []byte) (_ []byte,
 		b = append(b, '*')
 	}
 
-	if err := q.forEachHasOneJoin(func(join *relationJoin) error {
+	if err := q.forEachInlineRelJoin(func(join *relationJoin) error {
 		if len(b) != start {
 			b = append(b, ", "...)
 			start = len(b)
 		}
 
-		b, err = q.appendHasOneColumns(fmter, b, join)
+		b, err = q.appendInlineRelColumns(fmter, b, join)
 		if err != nil {
 			return err
 		}
@@ -570,7 +574,7 @@ func (q *SelectQuery) appendColumns(fmter schema.Formatter, b []byte) (_ []byte,
 	return b, nil
 }
 
-func (q *SelectQuery) appendHasOneColumns(
+func (q *SelectQuery) appendInlineRelColumns(
 	fmter schema.Formatter, b []byte, join *relationJoin,
 ) (_ []byte, err error) {
 	join.applyTo(q)
@@ -697,8 +701,8 @@ func (q *SelectQuery) Scan(ctx context.Context, dest ...interface{}) error {
 	}
 
 	if n, _ := res.RowsAffected(); n > 0 {
-		if tableModel, ok := model.(tableModel); ok {
-			if err := q.selectJoins(ctx, tableModel.GetJoins()); err != nil {
+		if tableModel, ok := model.(TableModel); ok {
+			if err := q.selectJoins(ctx, tableModel.getJoins()); err != nil {
 				return err
 			}
 		}
@@ -734,13 +738,13 @@ func (q *SelectQuery) afterSelectHook(ctx context.Context) error {
 func (q *SelectQuery) Count(ctx context.Context) (int, error) {
 	qq := countQuery{q}
 
-	queryBytes, err := qq.appendQuery(q.db.fmter, nil, true)
+	queryBytes, err := qq.AppendQuery(q.db.fmter, nil)
 	if err != nil {
 		return 0, err
 	}
 
 	query := internal.String(queryBytes)
-	ctx, event := q.db.beforeQuery(ctx, qq, query, nil)
+	ctx, event := q.db.beforeQuery(ctx, qq, query, nil, q.model)
 
 	var num int
 	err = q.conn.QueryRowContext(ctx, query).Scan(&num)
@@ -790,6 +794,25 @@ func (q *SelectQuery) ScanAndCount(ctx context.Context, dest ...interface{}) (in
 	return count, firstErr
 }
 
+func (q *SelectQuery) Exists(ctx context.Context) (bool, error) {
+	qq := existsQuery{q}
+
+	queryBytes, err := qq.AppendQuery(q.db.fmter, nil)
+	if err != nil {
+		return false, err
+	}
+
+	query := internal.String(queryBytes)
+	ctx, event := q.db.beforeQuery(ctx, qq, query, nil, q.model)
+
+	var exists bool
+	err = q.conn.QueryRowContext(ctx, query).Scan(&exists)
+
+	q.db.afterQuery(ctx, event, nil, err)
+
+	return exists, err
+}
+
 //------------------------------------------------------------------------------
 
 type joinQuery struct {
@@ -832,4 +855,23 @@ type countQuery struct {
 
 func (q countQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
 	return q.appendQuery(fmter, b, true)
+}
+
+//------------------------------------------------------------------------------
+
+type existsQuery struct {
+	*SelectQuery
+}
+
+func (q existsQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
+	b = append(b, "SELECT EXISTS ("...)
+
+	b, err = q.appendQuery(fmter, b, false)
+	if err != nil {
+		return nil, err
+	}
+
+	b = append(b, ")"...)
+
+	return b, nil
 }

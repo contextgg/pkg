@@ -1,22 +1,12 @@
 language: go
 go:
-  - 1.7.x
-  - 1.8.x
-  - 1.9.x
-  - 1.10.x
-  - 1.11.x
-  - 1.12.x
-  - 1.13.x
-  - 1.14.x
-  - 1.15.x
-  - tip
-
+- '1.14'
+- '1.15'
+- '1.16'
 script:
-  - make test
-
+- make test
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
-
+- bash <(curl -s https://codecov.io/bash)
 notifications:
   slack:
     if: branch = main
@@ -24,4 +14,4 @@ notifications:
     on_success: never
     on_failure: change
     rooms:
-      - secure: gthCH2Cha9FJ6pQMNvQ+Af2gHrqYO7tS/5m0mzu4MaOYZxgBxkdAGXBKchv1mLlc/pMKMCMejUdi+43oZCovntOOV41TPo0KUVVXZcetgsMGJm0g9d1fOhn9hlNC+qsbCGQ+zv5zltZ/eQ3nYG9TgLc+vZgDr4cSpMxZTl7GR4+NqvMTBfgLUuruTe4GXQXz7Sqjx/KNZHNlKm0NxMQtfzvKUEfWy3q5mqXhbITckZD+8oP4WEfdUXVzUcwZS7/HKwgEO1cpNKlMhdxfYUpYCdmPNLQVxdvfFYT/0A/G3bAgnWUo4QLQEbrsHMDeIfK5AC0jl0TnMEFoK7bkJdc3bg+U1Z4VsD5pdjApi34Y+G9iHUYFKmeyHhaG6e+bMWAhsXLopbTDTDQ0YqYRzYCDqKmubcLv1eDdcVHju5fBQh15Q1IGm6pYVeMrQTsuMhVWnZmN+vsx9d1xA0Cv1L5V6RLytrFxe6RNNeiDknmaKDKnRpaCzG/9fsRM1Q8R0MLJQwP5sGdvNAoydLwbWgSka1vqwjPtM+b8com+InzbkkUG4NADz1AKxh0I0Z6Y5FukpLgJFfRdiOsRYVh4cHB8gm8b6CL2vblFVL1un5boCmc0DZioL4mY2V8Kj7cB943X14kXM4yiZv5RiFJzJyhxcLzg22qPREsB4BRhSdex4uQ=
+      secure: OTcEH4DAE0NOsC93tUCywqXwIZKnXaoKC3eUXjTwhzFAVWFN8SJxjf+fC8cXJIpCJ9IY85ZNNXO6U8kuiPaO5+7pIfcULr4lhPDQprxeqoPr9R/USKGXOlhCWl9+xmh9vpe7dp80prB1N3z/acyPGDsWXwgYLw6mAtq6VTwjpBMzcN0ythxlaYWi5KrDXnCUxpLfqZsSEg6jmKRQ/OEaS78ewOJTr9H+SKGOefIK87D7qjtUFAseWqUh/mccLuG9RnTroBHsBY+no3QjGh0+Aj288JxI6U9/ixCWgIJNNuyC0ZhWO6HA6I/dYWZbst8wXY3UqNfdL1P7+3OzbBINAdc/MUjt75EEII6TAaoGojnoXDh+S72jqVGv9xEOx2LU4KGhXjYZDQO6XUzX29O6MsOni4wdBIbcBXQUsSX0dB2wfe8rj80fjzH2Q0/zL4F3v6Nu0jVsv6xKmVDBM6Zcl5OxfnXc5BWGZndzSZ7QGu1qINTr5JQipXK3A6HTadS//SbU3U0jiwjM6ZzICAprWTqRk9+Sou7EHwfUNwT+DZGWLo7x/kZc/Raz/7nzcoSZq2qREPBsFYKX0Mj1h1XyOvH0I9Po5vBPuUYqHEUO32/js3lTpbqimnXxHG4hsgDrkR07Wm7SSuwjdQtC81FKg8tDZy0LtKpEqTVJi0Dqh54=

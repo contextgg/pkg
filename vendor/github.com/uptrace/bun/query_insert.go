@@ -142,6 +142,10 @@ func (q *InsertQuery) Replace() *InsertQuery {
 
 //------------------------------------------------------------------------------
 
+func (q *InsertQuery) Operation() string {
+	return "INSERT"
+}
+
 func (q *InsertQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
 	if q.err != nil {
 		return nil, q.err
@@ -427,9 +431,13 @@ func (q *InsertQuery) appendOn(fmter schema.Formatter, b []byte) (_ []byte, err 
 		b = q.appendSetExcluded(b, fields)
 	}
 
-	b, err = q.appendWhere(fmter, b, true)
-	if err != nil {
-		return nil, err
+	if len(q.where) > 0 {
+		b = append(b, " WHERE "...)
+
+		b, err = appendWhere(fmter, b, q.where)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return b, nil

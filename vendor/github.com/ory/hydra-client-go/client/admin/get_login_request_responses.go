@@ -41,8 +41,8 @@ func (o *GetLoginRequestReader) ReadResponse(response runtime.ClientResponse, co
 			return nil, err
 		}
 		return nil, result
-	case 409:
-		result := NewGetLoginRequestConflict()
+	case 410:
+		result := NewGetLoginRequestGone()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -53,7 +53,6 @@ func (o *GetLoginRequestReader) ReadResponse(response runtime.ClientResponse, co
 			return nil, err
 		}
 		return nil, result
-
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -64,7 +63,7 @@ func NewGetLoginRequestOK() *GetLoginRequestOK {
 	return &GetLoginRequestOK{}
 }
 
-/*GetLoginRequestOK handles this case with default header values.
+/* GetLoginRequestOK describes a response with status code 200, with default header values.
 
 loginRequest
 */
@@ -75,7 +74,6 @@ type GetLoginRequestOK struct {
 func (o *GetLoginRequestOK) Error() string {
 	return fmt.Sprintf("[GET /oauth2/auth/requests/login][%d] getLoginRequestOK  %+v", 200, o.Payload)
 }
-
 func (o *GetLoginRequestOK) GetPayload() *models.LoginRequest {
 	return o.Payload
 }
@@ -97,25 +95,24 @@ func NewGetLoginRequestBadRequest() *GetLoginRequestBadRequest {
 	return &GetLoginRequestBadRequest{}
 }
 
-/*GetLoginRequestBadRequest handles this case with default header values.
+/* GetLoginRequestBadRequest describes a response with status code 400, with default header values.
 
-genericError
+jsonError
 */
 type GetLoginRequestBadRequest struct {
-	Payload *models.GenericError
+	Payload *models.JSONError
 }
 
 func (o *GetLoginRequestBadRequest) Error() string {
 	return fmt.Sprintf("[GET /oauth2/auth/requests/login][%d] getLoginRequestBadRequest  %+v", 400, o.Payload)
 }
-
-func (o *GetLoginRequestBadRequest) GetPayload() *models.GenericError {
+func (o *GetLoginRequestBadRequest) GetPayload() *models.JSONError {
 	return o.Payload
 }
 
 func (o *GetLoginRequestBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.GenericError)
+	o.Payload = new(models.JSONError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -130,25 +127,24 @@ func NewGetLoginRequestNotFound() *GetLoginRequestNotFound {
 	return &GetLoginRequestNotFound{}
 }
 
-/*GetLoginRequestNotFound handles this case with default header values.
+/* GetLoginRequestNotFound describes a response with status code 404, with default header values.
 
-genericError
+jsonError
 */
 type GetLoginRequestNotFound struct {
-	Payload *models.GenericError
+	Payload *models.JSONError
 }
 
 func (o *GetLoginRequestNotFound) Error() string {
 	return fmt.Sprintf("[GET /oauth2/auth/requests/login][%d] getLoginRequestNotFound  %+v", 404, o.Payload)
 }
-
-func (o *GetLoginRequestNotFound) GetPayload() *models.GenericError {
+func (o *GetLoginRequestNotFound) GetPayload() *models.JSONError {
 	return o.Payload
 }
 
 func (o *GetLoginRequestNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.GenericError)
+	o.Payload = new(models.JSONError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -158,30 +154,29 @@ func (o *GetLoginRequestNotFound) readResponse(response runtime.ClientResponse, 
 	return nil
 }
 
-// NewGetLoginRequestConflict creates a GetLoginRequestConflict with default headers values
-func NewGetLoginRequestConflict() *GetLoginRequestConflict {
-	return &GetLoginRequestConflict{}
+// NewGetLoginRequestGone creates a GetLoginRequestGone with default headers values
+func NewGetLoginRequestGone() *GetLoginRequestGone {
+	return &GetLoginRequestGone{}
 }
 
-/*GetLoginRequestConflict handles this case with default header values.
+/* GetLoginRequestGone describes a response with status code 410, with default header values.
 
-genericError
+requestWasHandledResponse
 */
-type GetLoginRequestConflict struct {
-	Payload *models.GenericError
+type GetLoginRequestGone struct {
+	Payload *models.RequestWasHandledResponse
 }
 
-func (o *GetLoginRequestConflict) Error() string {
-	return fmt.Sprintf("[GET /oauth2/auth/requests/login][%d] getLoginRequestConflict  %+v", 409, o.Payload)
+func (o *GetLoginRequestGone) Error() string {
+	return fmt.Sprintf("[GET /oauth2/auth/requests/login][%d] getLoginRequestGone  %+v", 410, o.Payload)
 }
-
-func (o *GetLoginRequestConflict) GetPayload() *models.GenericError {
+func (o *GetLoginRequestGone) GetPayload() *models.RequestWasHandledResponse {
 	return o.Payload
 }
 
-func (o *GetLoginRequestConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *GetLoginRequestGone) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.GenericError)
+	o.Payload = new(models.RequestWasHandledResponse)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -196,25 +191,24 @@ func NewGetLoginRequestInternalServerError() *GetLoginRequestInternalServerError
 	return &GetLoginRequestInternalServerError{}
 }
 
-/*GetLoginRequestInternalServerError handles this case with default header values.
+/* GetLoginRequestInternalServerError describes a response with status code 500, with default header values.
 
-genericError
+jsonError
 */
 type GetLoginRequestInternalServerError struct {
-	Payload *models.GenericError
+	Payload *models.JSONError
 }
 
 func (o *GetLoginRequestInternalServerError) Error() string {
 	return fmt.Sprintf("[GET /oauth2/auth/requests/login][%d] getLoginRequestInternalServerError  %+v", 500, o.Payload)
 }
-
-func (o *GetLoginRequestInternalServerError) GetPayload() *models.GenericError {
+func (o *GetLoginRequestInternalServerError) GetPayload() *models.JSONError {
 	return o.Payload
 }
 
 func (o *GetLoginRequestInternalServerError) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.GenericError)
+	o.Payload = new(models.JSONError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

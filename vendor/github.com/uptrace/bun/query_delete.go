@@ -129,6 +129,10 @@ func (q *DeleteQuery) hasReturning() bool {
 
 //------------------------------------------------------------------------------
 
+func (q *DeleteQuery) Operation() string {
+	return "DELETE"
+}
+
 func (q *DeleteQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
 	if q.err != nil {
 		return nil, q.err
@@ -151,7 +155,7 @@ func (q *DeleteQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, e
 		return upd.AppendQuery(fmter, b)
 	}
 
-	q = q.WhereAllWithDeleted()
+	q = q.WhereDeleted()
 	withAlias := q.db.features.Has(feature.DeleteTableAlias)
 
 	b, err = q.appendWith(fmter, b)

@@ -63,6 +63,11 @@ func (q *CreateTableQuery) ModelTableExpr(query string, args ...interface{}) *Cr
 	return q
 }
 
+func (q *CreateTableQuery) ColumnExpr(query string, args ...interface{}) *CreateTableQuery {
+	q.addColumn(schema.SafeQuery(query, args))
+	return q
+}
+
 //------------------------------------------------------------------------------
 
 func (q *CreateTableQuery) Temp() *CreateTableQuery {
@@ -83,6 +88,10 @@ func (q *CreateTableQuery) Varchar(n int) *CreateTableQuery {
 func (q *CreateTableQuery) ForeignKey(query string, args ...interface{}) *CreateTableQuery {
 	q.fks = append(q.fks, schema.SafeQuery(query, args))
 	return q
+}
+
+func (q *CreateTableQuery) Operation() string {
+	return "CREATE TABLE"
 }
 
 func (q *CreateTableQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
@@ -125,6 +134,14 @@ func (q *CreateTableQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []by
 		if field.SQLDefault != "" {
 			b = append(b, " DEFAULT "...)
 			b = append(b, field.SQLDefault...)
+		}
+	}
+
+	for _, col := range q.columns {
+		b = append(b, ", "...)
+		b, err = col.AppendQuery(fmter, b)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -182,14 +199,20 @@ func (q *CreateTableQuery) appendUniqueConstraints(fmter schema.Formatter, b []b
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		b = q.appendUniqueConstraint(fmter, b, key, unique[key])
+		if key == "" {
+			for _, field := range unique[key] {
+				b = q.appendUniqueConstraint(fmter, b, key, field)
+			}
+			continue
+		}
+		b = q.appendUniqueConstraint(fmter, b, key, unique[key]...)
 	}
 
 	return b
 }
 
 func (q *CreateTableQuery) appendUniqueConstraint(
-	fmter schema.Formatter, b []byte, name string, fields []*schema.Field,
+	fmter schema.Formatter, b []byte, name string, fields ...*schema.Field,
 ) []byte {
 	if name != "" {
 		b = append(b, ", CONSTRAINT "...)
@@ -200,7 +223,6 @@ func (q *CreateTableQuery) appendUniqueConstraint(
 	b = append(b, " UNIQUE ("...)
 	b = appendColumns(b, "", fields)
 	b = append(b, ")"...)
-
 	return b
 }
 

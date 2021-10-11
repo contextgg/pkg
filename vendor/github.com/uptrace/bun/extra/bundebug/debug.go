@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -72,49 +71,21 @@ func (h *QueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 }
 
 func formatOperation(event *bun.QueryEvent) string {
-	operation := eventOperation(event)
+	operation := event.Operation()
 	return operationColor(operation).Sprintf(" %-16s ", operation)
-}
-
-func eventOperation(event *bun.QueryEvent) string {
-	switch event.QueryAppender.(type) {
-	case *bun.SelectQuery:
-		return "SELECT"
-	case *bun.InsertQuery:
-		return "INSERT"
-	case *bun.UpdateQuery:
-		return "UPDATE"
-	case *bun.DeleteQuery:
-		return "DELETE"
-	case *bun.CreateTableQuery:
-		return "CREATE TABLE"
-	case *bun.DropTableQuery:
-		return "DROP TABLE"
-	}
-	return queryOperation(event.Query)
-}
-
-func queryOperation(name string) string {
-	if idx := strings.IndexByte(name, ' '); idx > 0 {
-		name = name[:idx]
-	}
-	if len(name) > 16 {
-		name = name[:16]
-	}
-	return name
 }
 
 func operationColor(operation string) *color.Color {
 	switch operation {
 	case "SELECT":
-		return color.New(color.BgGreen)
+		return color.New(color.BgGreen, color.FgHiWhite)
 	case "INSERT":
-		return color.New(color.BgBlue)
+		return color.New(color.BgBlue, color.FgHiWhite)
 	case "UPDATE":
-		return color.New(color.BgYellow)
+		return color.New(color.BgYellow, color.FgHiBlack)
 	case "DELETE":
-		return color.New(color.BgRed)
+		return color.New(color.BgMagenta, color.FgHiWhite)
 	default:
-		return color.New(color.FgBlack, color.BgWhite)
+		return color.New(color.BgWhite, color.FgHiBlack)
 	}
 }

@@ -100,6 +100,11 @@ func (q *UpdateQuery) Value(column string, expr string, args ...interface{}) *Up
 	return q
 }
 
+func (q *UpdateQuery) OmitZero() *UpdateQuery {
+	q.omitZero = true
+	return q
+}
+
 //------------------------------------------------------------------------------
 
 func (q *UpdateQuery) WherePK() *UpdateQuery {
@@ -160,13 +165,15 @@ func (q *UpdateQuery) hasReturning() bool {
 
 //------------------------------------------------------------------------------
 
+func (q *UpdateQuery) Operation() string {
+	return "SELECT"
+}
+
 func (q *UpdateQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
 	if q.err != nil {
 		return nil, q.err
 	}
 	fmter = formatterWithModel(fmter, q)
-
-	withAlias := fmter.HasFeature(feature.UpdateMultiTable)
 
 	b, err = q.appendWith(fmter, b)
 	if err != nil {
@@ -175,7 +182,7 @@ func (q *UpdateQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, e
 
 	b = append(b, "UPDATE "...)
 
-	if withAlias {
+	if fmter.HasFeature(feature.UpdateMultiTable) {
 		b, err = q.appendTablesWithAlias(fmter, b)
 	} else {
 		b, err = q.appendFirstTableWithAlias(fmter, b)
@@ -196,7 +203,7 @@ func (q *UpdateQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, e
 		}
 	}
 
-	b, err = q.mustAppendWhere(fmter, b, withAlias)
+	b, err = q.mustAppendWhere(fmter, b, true)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +259,7 @@ func (q *UpdateQuery) appendSetStruct(
 	isTemplate := fmter.IsNop()
 	pos := len(b)
 	for _, f := range fields {
-		if q.omitZero && f.NullZero && f.HasZeroValue(model.strct) {
+		if q.omitZero && f.HasZeroValue(model.strct) {
 			continue
 		}
 

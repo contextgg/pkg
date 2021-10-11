@@ -24,7 +24,8 @@ type Dialect struct {
 func New() *Dialect {
 	d := new(Dialect)
 	d.tables = schema.NewTables(d)
-	d.features = feature.Returning |
+	d.features = feature.CTE |
+		feature.Returning |
 		feature.DefaultPlaceholder |
 		feature.DoubleColonCast |
 		feature.InsertTableAlias |
@@ -79,6 +80,10 @@ func (d *Dialect) IdentQuote() byte {
 	return '"'
 }
 
+func (d *Dialect) AppendTime(b []byte, tm time.Time) []byte {
+	return appendTime(b, tm)
+}
+
 func (d *Dialect) Append(fmter schema.Formatter, b []byte, v interface{}) []byte {
 	switch v := v.(type) {
 	case nil:
@@ -104,7 +109,7 @@ func (d *Dialect) Append(fmter schema.Formatter, b []byte, v interface{}) []byte
 	case string:
 		return dialect.AppendString(b, v)
 	case time.Time:
-		return dialect.AppendTime(b, v)
+		return appendTime(b, v)
 	case []byte:
 		return dialect.AppendBytes(b, v)
 	case schema.QueryAppender:

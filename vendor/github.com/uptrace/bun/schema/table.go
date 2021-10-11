@@ -181,22 +181,27 @@ func (t *Table) initFields() {
 	t.FieldMap = make(map[string]*Field, t.Type.NumField())
 	t.addFields(t.Type, nil)
 
-	if len(t.PKs) > 0 {
-		return
-	}
-	for _, name := range []string{"id", "uuid", "pk_" + t.ModelName} {
-		if field, ok := t.FieldMap[name]; ok {
-			field.markAsPK()
-			t.PKs = []*Field{field}
-			t.DataFields = removeField(t.DataFields, field)
-			break
+	if len(t.PKs) == 0 {
+		for _, name := range []string{"id", "uuid", "pk_" + t.ModelName} {
+			if field, ok := t.FieldMap[name]; ok {
+				field.markAsPK()
+				t.PKs = []*Field{field}
+				t.DataFields = removeField(t.DataFields, field)
+				break
+			}
 		}
 	}
+
 	if len(t.PKs) == 1 {
-		switch t.PKs[0].IndirectType.Kind() {
+		pk := t.PKs[0]
+		if pk.SQLDefault != "" {
+			return
+		}
+
+		switch pk.IndirectType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			t.PKs[0].AutoIncrement = true
+			pk.AutoIncrement = true
 		}
 	}
 }
@@ -359,7 +364,7 @@ func (t *Table) newField(f reflect.StructField, index []int) *Field {
 	field.DiscoveredSQLType = DiscoverSQLType(field.IndirectType)
 	field.Append = t.dialect.FieldAppender(field)
 	field.Scan = FieldScanner(t.dialect, field)
-	field.IsZero = FieldZeroChecker(field)
+	field.IsZero = zeroChecker(field.StructField.Type)
 
 	if v, ok := tag.Options["alt"]; ok {
 		t.FieldMap[v] = field

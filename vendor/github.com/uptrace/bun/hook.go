@@ -4,24 +4,51 @@ import (
 	"context"
 	"database/sql"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/uptrace/bun/schema"
 )
 
+type IQuery interface {
+	schema.QueryAppender
+	Operation() string
+	GetModel() Model
+	GetTableName() string
+}
+
 type QueryEvent struct {
 	DB *DB
 
-	QueryAppender schema.QueryAppender
+	QueryAppender schema.QueryAppender // Deprecated: use IQuery instead
+	IQuery        IQuery
 	Query         string
 	QueryArgs     []interface{}
+	Model         Model
 
 	StartTime time.Time
 	Result    sql.Result
 	Err       error
 
 	Stash map[interface{}]interface{}
+}
+
+func (e *QueryEvent) Operation() string {
+	if e.IQuery != nil {
+		return e.IQuery.Operation()
+	}
+	return queryOperation(e.Query)
+}
+
+func queryOperation(query string) string {
+	if idx := strings.IndexByte(query, ' '); idx > 0 {
+		query = query[:idx]
+	}
+	if len(query) > 16 {
+		query = query[:16]
+	}
+	return query
 }
 
 type QueryHook interface {
@@ -31,11 +58,12 @@ type QueryHook interface {
 
 func (db *DB) beforeQuery(
 	ctx context.Context,
-	queryApp schema.QueryAppender,
+	iquery IQuery,
 	query string,
 	queryArgs []interface{},
+	model Model,
 ) (context.Context, *QueryEvent) {
-	atomic.AddUint64(&db.stats.Queries, 1)
+	atomic.AddUint32(&db.stats.Queries, 1)
 
 	if len(db.queryHooks) == 0 {
 		return ctx, nil
@@ -44,7 +72,9 @@ func (db *DB) beforeQuery(
 	event := &QueryEvent{
 		DB: db,
 
-		QueryAppender: queryApp,
+		Model:         model,
+		QueryAppender: iquery,
+		IQuery:        iquery,
 		Query:         query,
 		QueryArgs:     queryArgs,
 
@@ -68,7 +98,7 @@ func (db *DB) afterQuery(
 	case nil, sql.ErrNoRows:
 		// nothing
 	default:
-		atomic.AddUint64(&db.stats.Errors, 1)
+		atomic.AddUint32(&db.stats.Errors, 1)
 	}
 
 	if event == nil {

@@ -1,7 +1,6 @@
 ![Twilio SendGrid Logo](twilio_sendgrid_logo.png)
 
 [![BuildStatus](https://travis-ci.com/sendgrid/sendgrid-go.svg?branch=main)](https://travis-ci.com/sendgrid/sendgrid-go)
-[![Email Notifications Badge](https://dx.sendgrid.com/badge/go)](https://dx.sendgrid.com/newsletter/go)
 [![GoDoc](https://godoc.org/github.com/sendgrid/sendgrid-go?status.svg)](https://godoc.org/github.com/sendgrid/sendgrid-go)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/sendgrid.svg?style=social&label=Follow)](https://twitter.com/sendgrid)
@@ -40,7 +39,7 @@ We appreciate your continued support, thank you!
 
 ## Prerequisites
 
-- Go version 1.7
+- Go version 1.14, 1.15 or 1.16
 - The Twilio SendGrid service, starting at the [free level](https://sendgrid.com/free?source=sendgrid-go), to send up to 40,000 emails for the first 30 days, then send 100 emails/day free forever or check out [our pricing](https://sendgrid.com/pricing?source=sendgrid-go).
 
 ## Setup Environment Variables

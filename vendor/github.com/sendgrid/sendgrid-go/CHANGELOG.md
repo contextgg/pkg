@@ -1,6 +1,41 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+[2021-10-06] Version 3.10.2
+---------------------------
+**Library - Chore**
+- [PR #436](https://github.com/sendgrid/sendgrid-go/pull/436): Remove mail.send helpers with on-behalf-of header. Thanks to [@bjohnson-va](https://github.com/bjohnson-va)!
+
+
+[2021-09-22] Version 3.10.1
+---------------------------
+**Library - Chore**
+- [PR #438](https://github.com/sendgrid/sendgrid-go/pull/438): add support for 1.16. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+
+
+[2021-05-05] Version 3.10.0
+---------------------------
+**Library - Feature**
+- [PR #433](https://github.com/sendgrid/sendgrid-go/pull/433): support context.Context. Thanks to [@johejo](https://github.com/johejo)!
+
+
+[2021-04-21] Version 3.9.0
+--------------------------
+**Library - Feature**
+- [PR #430](https://github.com/sendgrid/sendgrid-go/pull/430): add Email Length validation. Thanks to [@itsksaurabh](https://github.com/itsksaurabh)!
+
+
+[2021-02-10] Version 3.8.0
+--------------------------
+**Library - Fix**
+- [PR #426](https://github.com/sendgrid/sendgrid-go/pull/426): typo in method name. Thanks to [@thinkingserious](https://github.com/thinkingserious)!
+- [PR #355](https://github.com/sendgrid/sendgrid-go/pull/355): content value issue by implementing NewSingleEmailPlanText. Thanks to [@prakashpandey](https://github.com/prakashpandey)!
+- [PR #398](https://github.com/sendgrid/sendgrid-go/pull/398): Add error handling for upstream on inbound parse. Thanks to [@thavanle](https://github.com/thavanle)!
+
+**Library - Feature**
+- [PR #425](https://github.com/sendgrid/sendgrid-go/pull/425): Add support for more bypass settings. Thanks to [@yousifh](https://github.com/yousifh)!
+
+
 [2020-11-18] Version 3.7.2
 --------------------------
 **Library - Docs**
