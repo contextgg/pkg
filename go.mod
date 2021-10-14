@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	cloud.google.com/go/pubsub v1.17.0
+	cloud.google.com/go/storage v1.10.0
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.7.4
@@ -20,8 +21,10 @@ require (
 	github.com/uptrace/bun/dialect/pgdialect v1.0.11
 	github.com/uptrace/bun/driver/pgdriver v1.0.11
 	github.com/uptrace/bun/extra/bundebug v1.0.11
+	github.com/vimeo/go-util v1.4.1
 	go.uber.org/zap v1.19.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	google.golang.org/api v0.54.0
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1
 )
@@ -84,7 +87,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210805134026-6f1e6394065a // indirect
 	golang.org/x/sys v0.0.0-20210925032602-92d5a993a665 // indirect
 	golang.org/x/text v0.3.6 // indirect
-	google.golang.org/api v0.54.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210824181836-a4879c3d0e89 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect

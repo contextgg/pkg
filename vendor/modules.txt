@@ -3,8 +3,10 @@
 cloud.google.com/go
 cloud.google.com/go/compute/metadata
 cloud.google.com/go/iam
+cloud.google.com/go/internal
 cloud.google.com/go/internal/optional
 cloud.google.com/go/internal/pubsub
+cloud.google.com/go/internal/trace
 cloud.google.com/go/internal/version
 # cloud.google.com/go/pubsub v1.17.0
 ## explicit; go 1.11
@@ -12,6 +14,9 @@ cloud.google.com/go/pubsub
 cloud.google.com/go/pubsub/apiv1
 cloud.google.com/go/pubsub/internal/distribution
 cloud.google.com/go/pubsub/internal/scheduler
+# cloud.google.com/go/storage v1.10.0
+## explicit; go 1.11
+cloud.google.com/go/storage
 # github.com/PuerkitoBio/purell v1.1.1
 ## explicit
 github.com/PuerkitoBio/purell
@@ -246,6 +251,9 @@ github.com/uptrace/bun/driver/pgdriver
 # github.com/uptrace/bun/extra/bundebug v1.0.11
 ## explicit; go 1.16
 github.com/uptrace/bun/extra/bundebug
+# github.com/vimeo/go-util v1.4.1
+## explicit; go 1.13
+github.com/vimeo/go-util/crc32combine
 # github.com/vmihailenco/msgpack/v5 v5.3.4
 ## explicit; go 1.11
 github.com/vmihailenco/msgpack/v5
@@ -272,6 +280,8 @@ go.opencensus.io/internal/tagencoding
 go.opencensus.io/metric/metricdata
 go.opencensus.io/metric/metricproducer
 go.opencensus.io/plugin/ocgrpc
+go.opencensus.io/plugin/ochttp
+go.opencensus.io/plugin/ochttp/propagation/b3
 go.opencensus.io/resource
 go.opencensus.io/stats
 go.opencensus.io/stats/internal
@@ -339,14 +349,21 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # google.golang.org/api v0.54.0
 ## explicit; go 1.11
+google.golang.org/api/googleapi
+google.golang.org/api/googleapi/transport
 google.golang.org/api/internal
+google.golang.org/api/internal/gensupport
 google.golang.org/api/internal/impersonate
+google.golang.org/api/internal/third_party/uritemplates
 google.golang.org/api/iterator
 google.golang.org/api/option
 google.golang.org/api/option/internaloption
+google.golang.org/api/storage/v1
 google.golang.org/api/support/bundler
 google.golang.org/api/transport/cert
 google.golang.org/api/transport/grpc
+google.golang.org/api/transport/http
+google.golang.org/api/transport/http/internal/propagation
 google.golang.org/api/transport/internal/dca
 # google.golang.org/appengine v1.6.7
 ## explicit; go 1.11
@@ -367,6 +384,7 @@ google.golang.org/appengine/urlfetch
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/iam/v1
 google.golang.org/genproto/googleapis/pubsub/v1
+google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/googleapis/type/expr
 google.golang.org/genproto/protobuf/field_mask
