@@ -44,9 +44,21 @@ func TestFile(t *testing.T) {
 	}
 	t.Log(o2)
 
-	err2 := svc.FinishUpload(ctx, "d1f187cc-c4c9-465f-9bc7-e20f65ac2c24", nil)
+	err2 := svc.FinishUpload(ctx, "d1f187cc-c4c9-465f-9bc7-e20f65ac2c24", map[string]string{
+		"hello": "chris",
+	})
 	if err2 != nil {
 		t.Error(err2)
 		return
+	}
+
+	m, err := svc.GetMetadata(ctx, "d1f187cc-c4c9-465f-9bc7-e20f65ac2c24")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if m != nil {
+		t.Log(m)
 	}
 }

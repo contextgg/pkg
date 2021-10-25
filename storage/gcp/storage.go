@@ -46,6 +46,15 @@ func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadClos
 	return r, nil
 }
 
+func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
+	params := GCSObjectParams{
+		Bucket: store.Bucket,
+		ID:     store.keyWithPrefix(id),
+	}
+
+	return store.Service.GetObjectMetadata(ctx, params)
+}
+
 func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata map[string]string) error {
 	prefix := fmt.Sprintf("%s_", store.keyWithPrefix(id))
 	filterParams := GCSFilterParams{

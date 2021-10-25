@@ -70,6 +70,7 @@ type GCSAPI interface {
 	CreateBucket(ctx context.Context, params GCSBucketParams) error
 	ReadObject(ctx context.Context, params GCSObjectParams) (GCSReader, error)
 	GetObjectSize(ctx context.Context, params GCSObjectParams) (int64, error)
+	GetObjectMetadata(ctx context.Context, params GCSObjectParams) (map[string]string, error)
 	SetObjectMetadata(ctx context.Context, params GCSObjectParams, metadata map[string]string) error
 	DeleteObject(ctx context.Context, params GCSObjectParams) error
 	DeleteObjectsWithFilter(ctx context.Context, params GCSFilterParams) error
@@ -309,6 +310,15 @@ func (service *GCSService) ReadObject(ctx context.Context, params GCSObjectParam
 	}
 
 	return r, nil
+}
+
+// GetObjectMetadata reads a GCSObjectParams and a map of metadata, returning a nil on success and an error otherwise
+func (service *GCSService) GetObjectMetadata(ctx context.Context, params GCSObjectParams) (map[string]string, error) {
+	attrs, err := service.Client.Bucket(params.Bucket).Object(params.ID).Attrs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return attrs.Metadata, nil
 }
 
 // SetObjectMetadata reads a GCSObjectParams and a map of metadata, returning a nil on success and an error otherwise

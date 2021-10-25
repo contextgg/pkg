@@ -2,6 +2,7 @@ package folder
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -35,6 +36,23 @@ func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int6
 func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadCloser, error) {
 	path := store.keyWithPrefix(id)
 	return os.Open(path)
+}
+func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
+	meta := map[string]string{}
+
+	f, err := os.OpenFile(store.keyWithPrefix(id)+".meta", os.O_RDONLY, defaultFilePerm)
+	if os.IsNotExist(err) {
+		return meta, nil
+	}
+	if err != nil {
+		return meta, err
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(&meta); err != nil {
+		return meta, err
+	}
+	return meta, nil
 }
 func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata map[string]string) error {
 	prefix := fmt.Sprintf("%s_", store.keyWithPrefix(id))
@@ -77,6 +95,26 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 
 	for _, p := range chunks {
 		if err := os.Remove(p); err != nil {
+			return err
+		}
+	}
+
+	// save metadata!
+	if metadata != nil {
+		metafilename := store.keyWithPrefix(id) + ".meta"
+
+		// try truncate!
+		if err := os.Truncate(metafilename, 0); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+
+		m, err := os.OpenFile(store.keyWithPrefix(id)+".meta", os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
+		if err != nil {
+			return err
+		}
+		defer m.Close()
+
+		if err := json.NewEncoder(m).Encode(metadata); err != nil {
 			return err
 		}
 	}
