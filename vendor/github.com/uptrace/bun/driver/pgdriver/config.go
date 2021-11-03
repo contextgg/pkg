@@ -56,6 +56,8 @@ func newDefaultConfig() *Config {
 
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 5 * time.Second,
+
+		TLSConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	cfg.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -69,9 +71,21 @@ func newDefaultConfig() *Config {
 	return cfg
 }
 
-type DriverOption func(cfg *Config)
+type Option func(cfg *Config)
 
-func WithAddr(addr string) DriverOption {
+// Deprecated. Use Option instead.
+type DriverOption = Option
+
+func WithNetwork(network string) Option {
+	if network == "" {
+		panic("network is empty")
+	}
+	return func(cfg *Config) {
+		cfg.Network = network
+	}
+}
+
+func WithAddr(addr string) Option {
 	if addr == "" {
 		panic("addr is empty")
 	}
@@ -80,13 +94,19 @@ func WithAddr(addr string) DriverOption {
 	}
 }
 
-func WithTLSConfig(tlsConfig *tls.Config) DriverOption {
+func WithTLSConfig(tlsConfig *tls.Config) Option {
 	return func(cfg *Config) {
 		cfg.TLSConfig = tlsConfig
 	}
 }
 
-func WithUser(user string) DriverOption {
+func WithInsecure(on bool) Option {
+	return func(cfg *Config) {
+		cfg.TLSConfig = nil
+	}
+}
+
+func WithUser(user string) Option {
 	if user == "" {
 		panic("user is empty")
 	}
@@ -95,13 +115,13 @@ func WithUser(user string) DriverOption {
 	}
 }
 
-func WithPassword(password string) DriverOption {
+func WithPassword(password string) Option {
 	return func(cfg *Config) {
 		cfg.Password = password
 	}
 }
 
-func WithDatabase(database string) DriverOption {
+func WithDatabase(database string) Option {
 	if database == "" {
 		panic("database is empty")
 	}
@@ -110,19 +130,19 @@ func WithDatabase(database string) DriverOption {
 	}
 }
 
-func WithApplicationName(appName string) DriverOption {
+func WithApplicationName(appName string) Option {
 	return func(cfg *Config) {
 		cfg.AppName = appName
 	}
 }
 
-func WithConnParams(params map[string]interface{}) DriverOption {
+func WithConnParams(params map[string]interface{}) Option {
 	return func(cfg *Config) {
 		cfg.ConnParams = params
 	}
 }
 
-func WithTimeout(timeout time.Duration) DriverOption {
+func WithTimeout(timeout time.Duration) Option {
 	return func(cfg *Config) {
 		cfg.DialTimeout = timeout
 		cfg.ReadTimeout = timeout
@@ -130,25 +150,25 @@ func WithTimeout(timeout time.Duration) DriverOption {
 	}
 }
 
-func WithDialTimeout(dialTimeout time.Duration) DriverOption {
+func WithDialTimeout(dialTimeout time.Duration) Option {
 	return func(cfg *Config) {
 		cfg.DialTimeout = dialTimeout
 	}
 }
 
-func WithReadTimeout(readTimeout time.Duration) DriverOption {
+func WithReadTimeout(readTimeout time.Duration) Option {
 	return func(cfg *Config) {
 		cfg.ReadTimeout = readTimeout
 	}
 }
 
-func WithWriteTimeout(writeTimeout time.Duration) DriverOption {
+func WithWriteTimeout(writeTimeout time.Duration) Option {
 	return func(cfg *Config) {
 		cfg.WriteTimeout = writeTimeout
 	}
 }
 
-func WithDSN(dsn string) DriverOption {
+func WithDSN(dsn string) Option {
 	return func(cfg *Config) {
 		opts, err := parseDSN(dsn)
 		if err != nil {
@@ -169,36 +189,55 @@ func env(key, defValue string) string {
 
 //------------------------------------------------------------------------------
 
-func parseDSN(dsn string) ([]DriverOption, error) {
+func parseDSN(dsn string) ([]Option, error) {
 	u, err := url.Parse(dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+	q := queryOptions{q: u.Query()}
+	var opts []Option
+
+	switch u.Scheme {
+	case "postgres", "postgresql":
+		if u.Host != "" {
+			addr := u.Host
+			if !strings.Contains(addr, ":") {
+				addr += ":5432"
+			}
+			opts = append(opts, WithAddr(addr))
+		}
+
+		if len(u.Path) > 1 {
+			opts = append(opts, WithDatabase(u.Path[1:]))
+		}
+
+		if host := q.string("host"); host != "" {
+			opts = append(opts, WithAddr(host))
+			if host[0] == '/' {
+				opts = append(opts, WithNetwork("unix"))
+			}
+		}
+	case "unix":
+		if len(u.Path) == 0 {
+			return nil, fmt.Errorf("unix socket DSN requires a path: %s", dsn)
+		}
+
+		opts = append(opts, WithNetwork("unix"))
+		if u.Host != "" {
+			opts = append(opts, WithDatabase(u.Host))
+		}
+		opts = append(opts, WithAddr(u.Path))
+	default:
 		return nil, errors.New("pgdriver: invalid scheme: " + u.Scheme)
 	}
 
-	var opts []DriverOption
-
-	if u.Host != "" {
-		addr := u.Host
-		if !strings.Contains(addr, ":") {
-			addr += ":5432"
-		}
-		opts = append(opts, WithAddr(addr))
-	}
 	if u.User != nil {
 		opts = append(opts, WithUser(u.User.Username()))
 		if password, ok := u.User.Password(); ok {
 			opts = append(opts, WithPassword(password))
 		}
 	}
-	if len(u.Path) > 1 {
-		opts = append(opts, WithDatabase(u.Path[1:]))
-	}
-
-	q := queryOptions{q: u.Query()}
 
 	if appName := q.string("application_name"); appName != "" {
 		opts = append(opts, WithApplicationName(appName))
@@ -207,10 +246,10 @@ func parseDSN(dsn string) ([]DriverOption, error) {
 	switch sslMode := q.string("sslmode"); sslMode {
 	case "verify-ca", "verify-full":
 		opts = append(opts, WithTLSConfig(new(tls.Config)))
-	case "allow", "prefer", "require":
+	case "allow", "prefer", "require", "":
 		opts = append(opts, WithTLSConfig(&tls.Config{InsecureSkipVerify: true}))
-	case "disable", "":
-		// no TLS config
+	case "disable":
+		opts = append(opts, WithInsecure(true))
 	default:
 		return nil, fmt.Errorf("pgdriver: sslmode '%s' is not supported", sslMode)
 	}

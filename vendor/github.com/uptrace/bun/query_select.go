@@ -116,8 +116,8 @@ func (q *SelectQuery) ExcludeColumn(columns ...string) *SelectQuery {
 
 //------------------------------------------------------------------------------
 
-func (q *SelectQuery) WherePK() *SelectQuery {
-	q.flags = q.flags.Set(wherePKFlag)
+func (q *SelectQuery) WherePK(cols ...string) *SelectQuery {
+	q.addWhereCols(cols)
 	return q
 }
 
@@ -370,9 +370,6 @@ func (q *SelectQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, e
 func (q *SelectQuery) appendQuery(
 	fmter schema.Formatter, b []byte, count bool,
 ) (_ []byte, err error) {
-	if q.err != nil {
-		return nil, q.err
-	}
 	fmter = formatterWithModel(fmter, q)
 
 	cteCount := count && (len(q.group) > 0 || q.distinctOn != nil)
@@ -645,6 +642,14 @@ func (q *SelectQuery) appendOrder(fmter schema.Formatter, b []byte) (_ []byte, e
 //------------------------------------------------------------------------------
 
 func (q *SelectQuery) Rows(ctx context.Context) (*sql.Rows, error) {
+	if q.err != nil {
+		return nil, q.err
+	}
+
+	if err := q.beforeAppendModel(ctx, q); err != nil {
+		return nil, err
+	}
+
 	queryBytes, err := q.AppendQuery(q.db.fmter, q.db.makeQueryBytes())
 	if err != nil {
 		return nil, err
@@ -655,6 +660,13 @@ func (q *SelectQuery) Rows(ctx context.Context) (*sql.Rows, error) {
 }
 
 func (q *SelectQuery) Exec(ctx context.Context) (res sql.Result, err error) {
+	if q.err != nil {
+		return nil, q.err
+	}
+	if err := q.beforeAppendModel(ctx, q); err != nil {
+		return nil, err
+	}
+
 	queryBytes, err := q.AppendQuery(q.db.fmter, q.db.makeQueryBytes())
 	if err != nil {
 		return nil, err
@@ -671,6 +683,10 @@ func (q *SelectQuery) Exec(ctx context.Context) (res sql.Result, err error) {
 }
 
 func (q *SelectQuery) Scan(ctx context.Context, dest ...interface{}) error {
+	if q.err != nil {
+		return q.err
+	}
+
 	model, err := q.getModel(dest)
 	if err != nil {
 		return err
@@ -686,6 +702,10 @@ func (q *SelectQuery) Scan(ctx context.Context, dest ...interface{}) error {
 		if err := q.beforeSelectHook(ctx); err != nil {
 			return err
 		}
+	}
+
+	if err := q.beforeAppendModel(ctx, q); err != nil {
+		return err
 	}
 
 	queryBytes, err := q.AppendQuery(q.db.fmter, q.db.makeQueryBytes())
@@ -736,6 +756,10 @@ func (q *SelectQuery) afterSelectHook(ctx context.Context) error {
 }
 
 func (q *SelectQuery) Count(ctx context.Context) (int, error) {
+	if q.err != nil {
+		return 0, q.err
+	}
+
 	qq := countQuery{q}
 
 	queryBytes, err := qq.AppendQuery(q.db.fmter, nil)
@@ -795,6 +819,10 @@ func (q *SelectQuery) ScanAndCount(ctx context.Context, dest ...interface{}) (in
 }
 
 func (q *SelectQuery) Exists(ctx context.Context) (bool, error) {
+	if q.err != nil {
+		return false, q.err
+	}
+
 	qq := existsQuery{q}
 
 	queryBytes, err := qq.AppendQuery(q.db.fmter, nil)
@@ -854,6 +882,12 @@ type countQuery struct {
 }
 
 func (q countQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
+	if q.err != nil {
+		return nil, q.err
+	}
+	// if err := q.beforeAppendModel(q); err != nil {
+	// 	return nil, err
+	// }
 	return q.appendQuery(fmter, b, true)
 }
 
@@ -864,6 +898,13 @@ type existsQuery struct {
 }
 
 func (q existsQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
+	if q.err != nil {
+		return nil, q.err
+	}
+	// if err := q.beforeAppendModel(q); err != nil {
+	// 	return nil, err
+	// }
+
 	b = append(b, "SELECT EXISTS ("...)
 
 	b, err = q.appendQuery(fmter, b, false)

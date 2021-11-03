@@ -25,7 +25,7 @@ func createDb() *bun.DB {
 
 	sqldb := sql.OpenDB(conn)
 	db := bun.NewDB(sqldb, pgdialect.New())
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose()))
+	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 	return db
 }
 

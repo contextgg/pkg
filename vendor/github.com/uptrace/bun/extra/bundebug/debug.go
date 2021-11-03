@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"reflect"
 	"time"
 
@@ -12,22 +13,51 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type ConfigOption func(*QueryHook)
+type Option func(*QueryHook)
 
-func WithVerbose() ConfigOption {
+// WithEnabled enables/disables the hook.
+func WithEnabled(on bool) Option {
 	return func(h *QueryHook) {
-		h.verbose = true
+		h.enabled = on
+	}
+}
+
+// WithVerbose configures the hook to log all queries
+// (by default, only failed queries are logged).
+func WithVerbose(on bool) Option {
+	return func(h *QueryHook) {
+		h.verbose = on
+	}
+}
+
+// WithEnv configures the hook using the environment variable value.
+// For example, WithEnv("BUNDEBUG"):
+//    - BUNDEBUG=0 - disables the hook.
+//    - BUNDEBUG=1 - enables the hook.
+//    - BUNDEBUG=2 - enables the hook and verbose mode.
+func FromEnv(key string) Option {
+	if key == "" {
+		key = "BUNDEBUG"
+	}
+	return func(h *QueryHook) {
+		if env, ok := os.LookupEnv(key); ok {
+			h.enabled = env != "" && env != "0"
+			h.verbose = env == "2"
+		}
 	}
 }
 
 type QueryHook struct {
+	enabled bool
 	verbose bool
 }
 
 var _ bun.QueryHook = (*QueryHook)(nil)
 
-func NewQueryHook(opts ...ConfigOption) *QueryHook {
-	h := new(QueryHook)
+func NewQueryHook(opts ...Option) *QueryHook {
+	h := &QueryHook{
+		enabled: true,
+	}
 	for _, opt := range opts {
 		opt(h)
 	}
@@ -41,6 +71,10 @@ func (h *QueryHook) BeforeQuery(
 }
 
 func (h *QueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
+	if !h.enabled {
+		return
+	}
+
 	if !h.verbose {
 		switch event.Err {
 		case nil, sql.ErrNoRows:

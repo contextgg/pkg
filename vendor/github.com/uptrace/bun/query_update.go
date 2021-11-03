@@ -107,8 +107,8 @@ func (q *UpdateQuery) OmitZero() *UpdateQuery {
 
 //------------------------------------------------------------------------------
 
-func (q *UpdateQuery) WherePK() *UpdateQuery {
-	q.flags = q.flags.Set(wherePKFlag)
+func (q *UpdateQuery) WherePK(cols ...string) *UpdateQuery {
+	q.addWhereCols(cols)
 	return q
 }
 
@@ -170,9 +170,6 @@ func (q *UpdateQuery) Operation() string {
 }
 
 func (q *UpdateQuery) AppendQuery(fmter schema.Formatter, b []byte) (_ []byte, err error) {
-	if q.err != nil {
-		return nil, q.err
-	}
 	fmter = formatterWithModel(fmter, q)
 
 	b, err = q.appendWith(fmter, b)
@@ -386,10 +383,18 @@ func (db *UpdateQuery) updateSliceWhere(model *sliceTableModel) string {
 //------------------------------------------------------------------------------
 
 func (q *UpdateQuery) Exec(ctx context.Context, dest ...interface{}) (sql.Result, error) {
+	if q.err != nil {
+		return nil, q.err
+	}
+
 	if q.table != nil {
 		if err := q.beforeUpdateHook(ctx); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := q.beforeAppendModel(ctx, q); err != nil {
+		return nil, err
 	}
 
 	queryBytes, err := q.AppendQuery(q.db.fmter, q.db.makeQueryBytes())

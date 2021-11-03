@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/uptrace/bun/dialect/feature"
 	"github.com/uptrace/bun/internal"
@@ -13,8 +14,7 @@ import (
 )
 
 const (
-	wherePKFlag internal.Flag = 1 << iota
-	forceDeleteFlag
+	forceDeleteFlag internal.Flag = 1 << iota
 	deletedFlag
 	allWithDeletedFlag
 )
@@ -164,6 +164,13 @@ func (q *baseQuery) getModel(dest []interface{}) (Model, error) {
 	return newModel(q.db, dest)
 }
 
+func (q *baseQuery) beforeAppendModel(ctx context.Context, query Query) error {
+	if q.tableModel != nil {
+		return q.tableModel.BeforeAppendModel(ctx, query)
+	}
+	return nil
+}
+
 //------------------------------------------------------------------------------
 
 func (q *baseQuery) checkSoftDelete() error {
@@ -260,6 +267,11 @@ func (q *baseQuery) addColumn(column schema.QueryWithArgs) {
 }
 
 func (q *baseQuery) excludeColumn(columns []string) {
+	if q.table == nil {
+		q.setErr(errNilModel)
+		return
+	}
+
 	if q.columns == nil {
 		for _, f := range q.table.Fields {
 			q.columns = append(q.columns, schema.UnsafeIdent(f.Name))
@@ -456,7 +468,7 @@ func (q *baseQuery) _getFields(omitPK bool) ([]*schema.Field, error) {
 
 func (q *baseQuery) scan(
 	ctx context.Context,
-	iquery IQuery,
+	iquery Query,
 	query string,
 	model Model,
 	hasDest bool,
@@ -488,7 +500,7 @@ func (q *baseQuery) scan(
 
 func (q *baseQuery) exec(
 	ctx context.Context,
-	iquery IQuery,
+	iquery Query,
 	query string,
 ) (sql.Result, error) {
 	ctx, event := q.db.beforeQuery(ctx, iquery, query, nil, q.model)
@@ -567,7 +579,8 @@ func formatterWithModel(fmter schema.Formatter, model schema.NamedArgAppender) s
 type whereBaseQuery struct {
 	baseQuery
 
-	where []schema.QueryWithSep
+	where       []schema.QueryWithSep
+	whereFields []*schema.Field
 }
 
 func (q *whereBaseQuery) addWhere(where schema.QueryWithSep) {
@@ -588,10 +601,46 @@ func (q *whereBaseQuery) addWhereGroup(sep string, where []schema.QueryWithSep) 
 	q.addWhere(schema.SafeQueryWithSep("", nil, ")"))
 }
 
+func (q *whereBaseQuery) addWhereCols(cols []string) {
+	if q.table == nil {
+		err := fmt.Errorf("bun: got %T, but WherePK requires a struct or slice-based model", q.model)
+		q.setErr(err)
+		return
+	}
+
+	var fields []*schema.Field
+
+	if cols == nil {
+		if err := q.table.CheckPKs(); err != nil {
+			q.setErr(err)
+			return
+		}
+		fields = q.table.PKs
+	} else {
+		fields = make([]*schema.Field, len(cols))
+		for i, col := range cols {
+			field, err := q.table.Field(col)
+			if err != nil {
+				q.setErr(err)
+				return
+			}
+			fields[i] = field
+		}
+	}
+
+	if q.whereFields != nil {
+		err := errors.New("bun: WherePK can only be called once")
+		q.setErr(err)
+		return
+	}
+
+	q.whereFields = fields
+}
+
 func (q *whereBaseQuery) mustAppendWhere(
 	fmter schema.Formatter, b []byte, withAlias bool,
 ) ([]byte, error) {
-	if len(q.where) == 0 && !q.flags.Has(wherePKFlag) {
+	if len(q.where) == 0 && q.whereFields == nil {
 		err := errors.New("bun: Update and Delete queries require at least one Where")
 		return nil, err
 	}
@@ -601,7 +650,7 @@ func (q *whereBaseQuery) mustAppendWhere(
 func (q *whereBaseQuery) appendWhere(
 	fmter schema.Formatter, b []byte, withAlias bool,
 ) (_ []byte, err error) {
-	if len(q.where) == 0 && !q.isSoftDelete() && !q.flags.Has(wherePKFlag) {
+	if len(q.where) == 0 && q.whereFields == nil && !q.isSoftDelete() {
 		return b, nil
 	}
 
@@ -623,19 +672,31 @@ func (q *whereBaseQuery) appendWhere(
 			b = append(b, q.tableModel.Table().SQLAlias...)
 			b = append(b, '.')
 		}
-		b = append(b, q.tableModel.Table().SoftDeleteField.SQLName...)
-		if q.flags.Has(deletedFlag) {
-			b = append(b, " IS NOT NULL"...)
+
+		field := q.tableModel.Table().SoftDeleteField
+		b = append(b, field.SQLName...)
+
+		if field.NullZero {
+			if q.flags.Has(deletedFlag) {
+				b = append(b, " IS NOT NULL"...)
+			} else {
+				b = append(b, " IS NULL"...)
+			}
 		} else {
-			b = append(b, " IS NULL"...)
+			if q.flags.Has(deletedFlag) {
+				b = append(b, " != "...)
+			} else {
+				b = append(b, " = "...)
+			}
+			b = fmter.Dialect().AppendTime(b, time.Time{})
 		}
 	}
 
-	if q.flags.Has(wherePKFlag) {
+	if q.whereFields != nil {
 		if len(b) > startLen {
 			b = append(b, " AND "...)
 		}
-		b, err = q.appendWherePK(fmter, b, withAlias)
+		b, err = q.appendWhereFields(fmter, b, q.whereFields, withAlias)
 		if err != nil {
 			return nil, err
 		}
@@ -666,29 +727,30 @@ func appendWhere(
 	return b, nil
 }
 
-func (q *whereBaseQuery) appendWherePK(
-	fmter schema.Formatter, b []byte, withAlias bool,
+func (q *whereBaseQuery) appendWhereFields(
+	fmter schema.Formatter, b []byte, fields []*schema.Field, withAlias bool,
 ) (_ []byte, err error) {
 	if q.table == nil {
-		err := fmt.Errorf("bun: got %T, but WherePK requires a struct or slice-based model", q.model)
-		return nil, err
-	}
-	if err := q.table.CheckPKs(); err != nil {
+		err := fmt.Errorf("bun: got %T, but WherePK requires struct or slice-based model", q.model)
 		return nil, err
 	}
 
 	switch model := q.tableModel.(type) {
 	case *structTableModel:
-		return q.appendWherePKStruct(fmter, b, model, withAlias)
+		return q.appendWhereStructFields(fmter, b, model, fields, withAlias)
 	case *sliceTableModel:
-		return q.appendWherePKSlice(fmter, b, model, withAlias)
+		return q.appendWhereSliceFields(fmter, b, model, fields, withAlias)
+	default:
+		return nil, fmt.Errorf("bun: WhereColumn does not support %T", q.tableModel)
 	}
-
-	return nil, fmt.Errorf("bun: WherePK does not support %T", q.tableModel)
 }
 
-func (q *whereBaseQuery) appendWherePKStruct(
-	fmter schema.Formatter, b []byte, model *structTableModel, withAlias bool,
+func (q *whereBaseQuery) appendWhereStructFields(
+	fmter schema.Formatter,
+	b []byte,
+	model *structTableModel,
+	fields []*schema.Field,
+	withAlias bool,
 ) (_ []byte, err error) {
 	if !model.strct.IsValid() {
 		return nil, errNilModel
@@ -696,7 +758,7 @@ func (q *whereBaseQuery) appendWherePKStruct(
 
 	isTemplate := fmter.IsNop()
 	b = append(b, '(')
-	for i, f := range q.table.PKs {
+	for i, f := range fields {
 		if i > 0 {
 			b = append(b, " AND "...)
 		}
@@ -716,18 +778,22 @@ func (q *whereBaseQuery) appendWherePKStruct(
 	return b, nil
 }
 
-func (q *whereBaseQuery) appendWherePKSlice(
-	fmter schema.Formatter, b []byte, model *sliceTableModel, withAlias bool,
+func (q *whereBaseQuery) appendWhereSliceFields(
+	fmter schema.Formatter,
+	b []byte,
+	model *sliceTableModel,
+	fields []*schema.Field,
+	withAlias bool,
 ) (_ []byte, err error) {
-	if len(q.table.PKs) > 1 {
+	if len(fields) > 1 {
 		b = append(b, '(')
 	}
 	if withAlias {
-		b = appendColumns(b, q.table.SQLAlias, q.table.PKs)
+		b = appendColumns(b, q.table.SQLAlias, fields)
 	} else {
-		b = appendColumns(b, "", q.table.PKs)
+		b = appendColumns(b, "", fields)
 	}
-	if len(q.table.PKs) > 1 {
+	if len(fields) > 1 {
 		b = append(b, ')')
 	}
 
@@ -746,10 +812,10 @@ func (q *whereBaseQuery) appendWherePKSlice(
 
 		el := indirect(slice.Index(i))
 
-		if len(q.table.PKs) > 1 {
+		if len(fields) > 1 {
 			b = append(b, '(')
 		}
-		for i, f := range q.table.PKs {
+		for i, f := range fields {
 			if i > 0 {
 				b = append(b, ", "...)
 			}
@@ -759,7 +825,7 @@ func (q *whereBaseQuery) appendWherePKSlice(
 				b = f.AppendValue(fmter, b, el)
 			}
 		}
-		if len(q.table.PKs) > 1 {
+		if len(fields) > 1 {
 			b = append(b, ')')
 		}
 	}
@@ -794,9 +860,11 @@ func (q *returningQuery) addReturningField(field *schema.Field) {
 
 func (q *returningQuery) hasReturning() bool {
 	if len(q.returning) == 1 {
-		switch q.returning[0].Query {
-		case "null", "NULL":
-			return false
+		if ret := q.returning[0]; len(ret.Args) == 0 {
+			switch ret.Query {
+			case "", "null", "NULL":
+				return false
+			}
 		}
 	}
 	return len(q.returning) > 0 || len(q.returningFields) > 0
