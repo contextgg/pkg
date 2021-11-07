@@ -22,7 +22,7 @@ type BaseCommand struct {
 	AggregateId string `json:"aggregate_id"`
 }
 
-// GetAggregateID return the aggregate id
+// GetAggregateId return the aggregate id
 func (c BaseCommand) GetAggregateId() string {
 	return c.AggregateId
 }
@@ -32,7 +32,7 @@ type ReplayCommand struct {
 	AggregateId string
 }
 
-// GetAggregateID return the aggregate id
+// GetAggregateId return the aggregate id
 func (c ReplayCommand) GetAggregateId() string {
 	return c.AggregateId
 }

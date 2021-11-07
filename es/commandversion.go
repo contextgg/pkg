@@ -11,12 +11,12 @@ type BaseCommandVersion struct {
 	Version     int    `json:"int"`
 }
 
-// GetAggregateID return the aggregate id
+// GetAggregateId return the aggregate id
 func (c BaseCommandVersion) GetAggregateId() string {
 	return c.AggregateId
 }
 
-// GetAggregateID return the aggregate id
+// GetAggregateId return the aggregate id
 func (c BaseCommandVersion) GetVersion() int {
 	return c.Version
 }

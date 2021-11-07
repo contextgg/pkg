@@ -11,7 +11,7 @@ import (
 )
 
 type EventWithContext struct {
-	AggregateID   string                 `json:"aggregate_id"`
+	AggregateId   string                 `json:"aggregate_id"`
 	AggregateType string                 `json:"aggregate_type"`
 	Version       int                    `json:"version"`
 	Type          string                 `json:"type"`
@@ -28,7 +28,7 @@ type EventCodec struct{}
 // MarshalEvent marshals an event into bytes in JSON format.
 func (c *EventCodec) MarshalEvent(ctx context.Context, event *events.Event) ([]byte, error) {
 	e := EventWithContext{
-		AggregateID:   event.AggregateID,
+		AggregateId:   event.AggregateId,
 		AggregateType: event.AggregateType,
 		Version:       event.Version,
 		Type:          event.Type,
@@ -70,7 +70,7 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (*events.Even
 	}
 
 	evt := &events.Event{
-		AggregateID:   out.AggregateID,
+		AggregateId:   out.AggregateId,
 		AggregateType: out.AggregateType,
 		Version:       out.Version,
 		Type:          out.Type,

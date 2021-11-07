@@ -17,7 +17,7 @@ import (
 
 type event struct {
 	Namespace     string `bun:",pk"`
-	AggregateID   string `bun:",pk,type:uuid"`
+	AggregateId   string `bun:",pk,type:uuid"`
 	AggregateType string `bun:",pk"`
 	Version       int    `bun:",pk"`
 	Type          string `bun:",notnull"`
@@ -142,7 +142,7 @@ func (s *data) SaveSnapshot(ctx context.Context, namespace string, rev string, a
 
 	ss := &snapshot{
 		Namespace: namespace,
-		ID:        agg.GetID(),
+		ID:        agg.GetId(),
 		Type:      agg.GetTypeName(),
 		Revision:  rev,
 		Aggregate: json.RawMessage(data),
@@ -164,7 +164,7 @@ func (s *data) SaveEvents(ctx context.Context, namespace string, evts ...events.
 
 		m := event{
 			Namespace:     namespace,
-			AggregateID:   evt.AggregateID,
+			AggregateId:   evt.AggregateId,
 			AggregateType: evt.AggregateType,
 			Version:       evt.Version,
 			Type:          evt.Type,
@@ -202,7 +202,7 @@ func (s *data) LoadEntity(ctx context.Context, namespace string, entity es.Entit
 func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, agg es.AggregateSourced) error {
 	ss := &snapshot{
 		Namespace: namespace,
-		ID:        agg.GetID(),
+		ID:        agg.GetId(),
 		Type:      agg.GetTypeName(),
 		Revision:  rev,
 	}
@@ -245,7 +245,7 @@ func (s *data) LoadEventsByType(ctx context.Context, namespace string, aggregate
 		}
 
 		m := events.Event{
-			AggregateID:   evt.AggregateID,
+			AggregateId:   evt.AggregateId,
 			AggregateType: evt.AggregateType,
 			Version:       evt.Version,
 			Type:          evt.Type,
@@ -280,7 +280,7 @@ func (s *data) LoadUniqueEvents(ctx context.Context, namespace string, typeName 
 		}
 
 		m := events.Event{
-			AggregateID:   evt.AggregateID,
+			AggregateId:   evt.AggregateId,
 			AggregateType: evt.AggregateType,
 			Version:       evt.Version,
 			Type:          evt.Type,
@@ -313,7 +313,7 @@ func (s *data) LoadAllEvents(ctx context.Context, namespace string) ([]events.Ev
 		}
 
 		m := events.Event{
-			AggregateID:   evt.AggregateID,
+			AggregateId:   evt.AggregateId,
 			AggregateType: evt.AggregateType,
 			Version:       evt.Version,
 			Type:          evt.Type,
@@ -347,7 +347,7 @@ func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeN
 	}
 
 	m := &events.Event{
-		AggregateID:   evt.AggregateID,
+		AggregateId:   evt.AggregateId,
 		AggregateType: evt.AggregateType,
 		Version:       evt.Version,
 		Type:          evt.Type,
@@ -381,7 +381,7 @@ func (s *data) LoadEvents(ctx context.Context, namespace string, id string, type
 		}
 
 		m := events.Event{
-			AggregateID:   evt.AggregateID,
+			AggregateId:   evt.AggregateId,
 			AggregateType: evt.AggregateType,
 			Version:       evt.Version,
 			Type:          evt.Type,

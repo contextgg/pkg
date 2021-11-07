@@ -5,8 +5,8 @@ type EntityFunc func(string) Entity
 
 // Entity for models
 type Entity interface {
-	// GetID return the ID of the aggregate
-	GetID() string
+	// GetId return the ID of the aggregate
+	GetId() string
 
 	// GetTypeName return the TypeBame of the aggregate
 	GetTypeName() string

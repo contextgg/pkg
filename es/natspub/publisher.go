@@ -98,7 +98,7 @@ func (c *publisher) PublishEvent(ctx context.Context, event events.Event) error 
 		return err
 	}
 
-	c.l.Debug("Event Published via GCP pub/sub", "topic_name", c.topicName, "event_type", event.Type, "event_aggregate_id", event.AggregateID, "event_aggregate_type", event.AggregateType)
+	c.l.Debug("Event Published via GCP pub/sub", "topic_name", c.topicName, "event_type", event.Type, "event_aggregate_id", event.AggregateId, "event_aggregate_type", event.AggregateType)
 	return nil
 }
 

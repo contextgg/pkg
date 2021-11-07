@@ -50,8 +50,8 @@ type BaseAggregateSourced struct {
 	events   []events.Event
 }
 
-// GetID of the aggregate
-func (a *BaseAggregateSourced) GetID() string {
+// GetId of the aggregate
+func (a *BaseAggregateSourced) GetId() string {
 	return a.Id
 }
 

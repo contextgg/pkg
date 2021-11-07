@@ -86,7 +86,7 @@ func (s *store) loadSourced(ctx context.Context, aggregate AggregateSourced, for
 		}
 	}
 	// load up the events from the DB.
-	originalEvents, err := s.data.LoadEvents(ctx, namespace, aggregate.GetID(), aggregate.GetTypeName(), aggregate.GetVersion())
+	originalEvents, err := s.data.LoadEvents(ctx, namespace, aggregate.GetId(), aggregate.GetTypeName(), aggregate.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (s *store) saveAggregateHolder(ctx context.Context, aggregate AggregateHold
 }
 
 func (s *store) deleteSourced(ctx context.Context, aggregate AggregateSourced) error {
-	return fmt.Errorf("Delete sourced %s - %s", aggregate.GetID(), aggregate.GetTypeName())
+	return fmt.Errorf("Delete sourced %s - %s", aggregate.GetId(), aggregate.GetTypeName())
 }
 func (s *store) deleteEntity(ctx context.Context, aggregate Entity) error {
 	namespace := ns.FromContext(ctx)

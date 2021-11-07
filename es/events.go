@@ -16,7 +16,7 @@ func NewEvent(ctx context.Context, entity Entity, version int, data interface{})
 	meta := metadata.FromContext(ctx)
 
 	return events.Event{
-		AggregateID:   entity.GetID(),
+		AggregateId:   entity.GetId(),
 		AggregateType: entity.GetTypeName(),
 		Type:          typeName,
 		Timestamp:     timestamp,

@@ -24,8 +24,8 @@ type BaseAggregateHolder struct {
 	events   []events.Event
 }
 
-// GetID of the aggregate
-func (a *BaseAggregateHolder) GetID() string {
+// GetId of the aggregate
+func (a *BaseAggregateHolder) GetId() string {
 	return a.Id
 }
 

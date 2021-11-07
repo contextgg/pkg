@@ -25,7 +25,7 @@ type projectorHandler struct {
 }
 
 func (p *projectorHandler) HandleEvent(ctx context.Context, evt events.Event) error {
-	entity, err := p.store.Load(ctx, evt.AggregateID, false)
+	entity, err := p.store.Load(ctx, evt.AggregateId, false)
 	if err != nil {
 		return err
 	}
