@@ -23,25 +23,25 @@ func MatchAnyInRegistry() EventMatcher {
 	}
 }
 
-// MatchNotLocal only events that aren't local
-func MatchNotLocal() EventMatcher {
+// IsLocal only events that aren't local
+func IsLocal() EventMatcher {
 	return func(e events.Event) bool {
 		if d, ok := types.GetTypeData(e.Type); ok {
-			return !d.InternalType
+			return d.InternalType
 		}
 		return true
 	}
 }
 
 // MatchEvent matches a specific event type, nil events never match.
-func MatchEvent(t string) EventMatcher {
+func MatchEventData(t string) EventMatcher {
 	return func(e events.Event) bool {
 		return e.Type == t
 	}
 }
 
-// MatchAnyEventOf matches if any of several matchers matches.
-func MatchAnyEventOf(allTypes ...interface{}) EventMatcher {
+// MatchAnyEventDataOf matches if any of several matchers matches.
+func MatchAnyEventDataOf(allTypes ...interface{}) EventMatcher {
 	all := make(map[string]interface{})
 	for _, t := range allTypes {
 		_, name := types.GetTypeName(t)

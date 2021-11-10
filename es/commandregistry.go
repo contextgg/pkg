@@ -12,7 +12,7 @@ import (
 
 // CommandRegistry stores the handlers for commands
 type CommandRegistry interface {
-	SetHandler(CommandHandler, Command) error
+	SetHandler(CommandHandler, ...Command)
 	GetHandler(Command) (CommandHandler, error)
 	NewCommand(string) (Command, error)
 }
@@ -31,18 +31,15 @@ type commandRegistry struct {
 	types    map[string]reflect.Type
 }
 
-func (r *commandRegistry) SetHandler(handler CommandHandler, cmd Command) error {
+func (r *commandRegistry) SetHandler(handler CommandHandler, cmds ...Command) {
 	r.Lock()
 	defer r.Unlock()
 
-	if cmd == nil {
-		return errors.New("You need to supply a command")
+	for _, cmd := range cmds {
+		rawType, name := types.GetTypeName(cmd)
+		r.registry[name] = handler
+		r.types[name] = rawType
 	}
-
-	rawType, name := types.GetTypeName(cmd)
-	r.registry[name] = handler
-	r.types[name] = rawType
-	return nil
 }
 
 func (r *commandRegistry) GetHandler(cmd Command) (CommandHandler, error) {

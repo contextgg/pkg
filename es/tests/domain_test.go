@@ -9,6 +9,7 @@ import (
 
 	"github.com/contextgg/pkg/db/pg"
 	"github.com/contextgg/pkg/es"
+	"github.com/contextgg/pkg/es/tests/aggregates"
 	"github.com/contextgg/pkg/es/tests/commands"
 	"github.com/contextgg/pkg/logger"
 	"github.com/contextgg/pkg/ns"
@@ -19,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func SetupBus() (es.Bus, error) {
+func SetupBus() (es.CommandHandler, error) {
 	z, _ := zap.NewDevelopment()
 	l := logger.NewLogger(z)
 
@@ -58,11 +59,19 @@ func SetupBus() (es.Bus, error) {
 	db := bun.NewDB(sqldb, pgdialect.New())
 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 
-	return NewBus(db, l)
+	// migrate the DB!
+	if err := es.MigrateDatabase(
+		db,
+		es.InitializeEvents(),
+		es.InitializeSnapshots(),
+		es.InitializeEntities(
+			&aggregates.Demo{},
+		),
+	); err != nil {
+		return nil, err
+	}
 
-	// fixture := dbfixture.New(db, dbfixture.WithTruncateTables())
-	// ferr := fixture.Load(context.Background(), os.DirFS("../data"), "profile.yml")
-	// Expect(ferr).ShouldNot(HaveOccurred())
+	return NewBus(db, l)
 }
 
 func TestIt(t *testing.T) {
@@ -77,7 +86,7 @@ func TestIt(t *testing.T) {
 			BaseCommand: es.BaseCommand{
 				AggregateId: "d63b875a-a664-410c-9102-21bfd7381f6e",
 			},
-			Name: "Hello",
+			Name: "Hello2",
 		},
 	}
 

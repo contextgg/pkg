@@ -7,3 +7,9 @@ type NewDemo struct {
 
 	Name string
 }
+
+type AddDescription struct {
+	es.BaseCommand
+
+	Description string
+}

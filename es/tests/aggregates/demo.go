@@ -13,13 +13,16 @@ import (
 type Demo struct {
 	es.BaseAggregateSourced
 
-	Name string
+	Name        string
+	Description string
 }
 
 func (a *Demo) HandleCommand(ctx context.Context, cmd es.Command) error {
 	switch c := cmd.(type) {
 	case *commands.NewDemo:
 		return a.handleNewDemo(ctx, c)
+	case *commands.AddDescription:
+		return a.handleAddDescription(ctx, c)
 	}
 	return es.ErrNotHandled
 }
@@ -30,16 +33,28 @@ func (a *Demo) handleNewDemo(ctx context.Context, cmd *commands.NewDemo) error {
 	})
 	return nil
 }
+func (a *Demo) handleAddDescription(ctx context.Context, cmd *commands.AddDescription) error {
+	a.StoreEventData(ctx, &eventdata.DemoDescriptionAdded{
+		Description: cmd.Description,
+	})
+	return nil
+}
 
 func (a *Demo) ApplyEvent(ctx context.Context, event events.Event) error {
 	switch d := event.Data.(type) {
 	case *eventdata.DemoCreated:
 		return a.applyDemoCreated(ctx, event, d)
+	case *eventdata.DemoDescriptionAdded:
+		return a.applyDemoDescriptionAdded(ctx, event, d)
 	}
 	return nil
 }
 func (a *Demo) applyDemoCreated(ctx context.Context, event events.Event, data *eventdata.DemoCreated) error {
 	a.Name = data.Name
+	return nil
+}
+func (a *Demo) applyDemoDescriptionAdded(ctx context.Context, event events.Event, data *eventdata.DemoDescriptionAdded) error {
+	a.Description = data.Description
 	return nil
 }
 

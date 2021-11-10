@@ -2,18 +2,20 @@ package sagas
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/events"
+	"github.com/contextgg/pkg/types"
 
 	"github.com/contextgg/pkg/es/tests/aggregates"
+	"github.com/contextgg/pkg/es/tests/commands"
 	"github.com/contextgg/pkg/es/tests/eventdata"
 )
 
 type counter struct {
-	store es.Store
+	entityStore es.EntityStore
+	name        string
 }
 
 func (s *counter) Run(ctx context.Context, event events.Event) ([]es.Command, error) {
@@ -25,23 +27,26 @@ func (s *counter) Run(ctx context.Context, event events.Event) ([]es.Command, er
 }
 
 func (s *counter) runDemoCreated(ctx context.Context, event events.Event, data *eventdata.DemoCreated) ([]es.Command, error) {
-	e, err := s.store.Load(ctx, event.AggregateId, false)
+	agg, err := s.entityStore.Load(ctx, s.name, event.AggregateId)
 	if err != nil {
 		return nil, err
-	}
-	agg, ok := e.(*aggregates.Demo)
-	if !ok {
-		return nil, nil
 	}
 
 	log.Printf("Agg %v", agg)
 
-	// default create the invite!
-	return nil, fmt.Errorf("Whoops")
+	return es.ReturnCommands(&commands.AddDescription{
+		BaseCommand: es.BaseCommand{
+			AggregateId: event.AggregateId,
+		},
+		Description: "Done!",
+	})
 }
 
-func NewCounter(store es.Store) es.Saga {
+func NewCounter(entityStore es.EntityStore) es.Saga {
+	_, name := types.GetTypeName(&aggregates.Demo{})
+
 	return &counter{
-		store: store,
+		name:        name,
+		entityStore: entityStore,
 	}
 }

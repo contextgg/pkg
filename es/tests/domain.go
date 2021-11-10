@@ -2,7 +2,6 @@ package tests
 
 import (
 	"github.com/contextgg/pkg/es"
-	"github.com/contextgg/pkg/es/postgres"
 	"github.com/contextgg/pkg/logger"
 	"github.com/uptrace/bun"
 
@@ -12,28 +11,32 @@ import (
 	"github.com/contextgg/pkg/es/tests/sagas"
 )
 
-func NewBus(db *bun.DB, log logger.Logger) (es.Bus, error) {
-	data := postgres.NewPostgresData(
-		db,
-		es.InitializeEvents(),
-		es.InitializeSnapshots(),
-		es.InitializeEntities(
-			&aggregates.Demo{},
-		),
+func NewBus(db *bun.DB, log logger.Logger) (es.CommandHandler, error) {
+	uniter := es.NewUniter(db)
+	eventBus := es.NewEventBus()
+
+	entityRegistry := es.NewEntityRegistry()
+	entityRegistry.SetEntity(
+		&aggregates.Demo{},
+		es.EntityFactory(aggregates.NewDemo),
+	)
+	entityStore := es.NewEntityStore(entityRegistry, eventBus)
+
+	commandBus := es.NewCommandBus(uniter)
+	commandBus.SetHandler(
+		es.NewAggregateSourcedHandler(entityStore, &aggregates.Demo{}),
+		&commands.NewDemo{},
+		&commands.AddDescription{},
 	)
 
-	bus := es.NewBus()
-
-	// uniter := es.NewUniter()
-	demoStore := es.NewStore(data, bus, aggregates.NewDemo)
-	demoHandler := es.NewAggregateSourcedHandler(demoStore)
-
-	bus.SetHandler(demoHandler, &commands.NewDemo{})
-
-	bus.AddSaga(
-		sagas.NewCounter(demoStore),
-		&eventdata.DemoCreated{},
+	eventBus.AddHandler(
+		es.NewSagaHandler(commandBus, sagas.NewCounter(entityStore)),
+		es.MatchAnyEventDataOf(&eventdata.DemoCreated{}),
 	)
 
-	return bus, nil
+	// setup subscribers here!.
+	external := es.UseEventHandlerMiddleware(eventBus, es.EventUniterMiddleware(uniter))
+	log.Info("External setup", "external", external)
+
+	return commandBus, nil
 }

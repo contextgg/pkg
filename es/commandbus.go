@@ -23,15 +23,9 @@ type CommandBus interface {
 	CommandHandler
 }
 
-// NewCommandBus create a new bus from a registry
-func NewCommandBus() CommandBus {
-	return &commandBus{
-		NewCommandRegistry(),
-	}
-}
-
 type commandBus struct {
 	CommandRegistry
+	uniter Uniter
 }
 
 func (b *commandBus) HandleCommand(ctx context.Context, cmd Command) error {
@@ -40,5 +34,17 @@ func (b *commandBus) HandleCommand(ctx context.Context, cmd Command) error {
 	if err != nil {
 		return err
 	}
-	return handler.HandleCommand(ctx, cmd)
+
+	exec := func(ctx context.Context) error {
+		return handler.HandleCommand(ctx, cmd)
+	}
+	return b.uniter.Run(ctx, exec)
+}
+
+// NewCommandBus create a new bus from a registry
+func NewCommandBus(uniter Uniter) CommandBus {
+	return &commandBus{
+		CommandRegistry: NewCommandRegistry(),
+		uniter:          uniter,
+	}
 }

@@ -36,3 +36,13 @@ type ReplayCommand struct {
 func (c ReplayCommand) GetAggregateId() string {
 	return c.AggregateId
 }
+
+func IsReplayCommand(cmd Command) bool {
+	// handle the command
+	switch cmd.(type) {
+	case *ReplayCommand:
+		return true
+	default:
+		return false
+	}
+}
