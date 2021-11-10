@@ -33,3 +33,7 @@ func NewLogger(l *zap.Logger) Logger {
 		z: l.Sugar(),
 	}
 }
+
+func NewNop() Logger {
+	return NewLogger(zap.NewNop())
+}

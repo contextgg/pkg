@@ -6,7 +6,7 @@ import (
 
 type key int
 
-const namespaceKey = 0
+const namespaceKey key = 0
 
 const defaultNamespace = "default"
 

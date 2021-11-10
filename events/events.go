@@ -14,7 +14,7 @@ type Metadata = map[string]interface{}
 
 // Event stores the data for every event
 type Event struct {
-	AggregateID   string      `json:"aggregate_id"`
+	AggregateId   string      `json:"aggregate_id"`
 	AggregateType string      `json:"aggregate_type"`
 	Version       int         `json:"version"`
 	Type          string      `json:"type"`
