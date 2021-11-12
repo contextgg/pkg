@@ -5,16 +5,26 @@ import (
 	"strings"
 )
 
-// GetTypeName of given struct
-func GetTypeName(source interface{}) (reflect.Type, string) {
+func typeFactory(t reflect.Type) TypeFunc {
+	return func() interface{} {
+		return reflect.New(t).Interface()
+	}
+}
+
+func getElemType(source interface{}) reflect.Type {
 	rawType := reflect.TypeOf(source)
 	// source is a pointer, convert to its value
 	if rawType.Kind() == reflect.Ptr {
 		rawType = rawType.Elem()
 	}
-	name := rawType.String()
-	// we need to extract only the name without the package
-	// name currently follows the format `package.StructName`
-	parts := strings.Split(name, ".")
-	return rawType, parts[1]
+	return rawType
+}
+
+func getShortName(rawType reflect.Type) string {
+	parts := strings.Split(rawType.String(), ".")
+	return parts[1]
+}
+
+func GetTypeName(source interface{}) string {
+	return getShortName(getElemType(source))
 }

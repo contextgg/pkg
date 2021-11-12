@@ -32,7 +32,6 @@ github.com/asaskevich/govalidator
 github.com/beorn7/perks/quantile
 # github.com/cenkalti/backoff/v4 v4.1.1
 ## explicit; go 1.13
-github.com/cenkalti/backoff/v4
 # github.com/census-instrumentation/opencensus-proto v0.3.0
 ## explicit
 github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1
@@ -267,6 +266,9 @@ github.com/ory/hydra-client-go/models
 # github.com/patrickmn/go-cache v2.1.0+incompatible
 ## explicit
 github.com/patrickmn/go-cache
+# github.com/pkg/errors v0.9.1
+## explicit
+github.com/pkg/errors
 # github.com/prometheus/client_golang v1.11.0
 ## explicit; go 1.13
 github.com/prometheus/client_golang/prometheus

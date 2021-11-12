@@ -40,7 +40,7 @@ func (a *aggregateCommandHandler) HandleCommand(ctx context.Context, cmd Command
 
 // NewAggregateSourcedHandler creates the commandhandler
 func NewAggregateSourcedHandler(entityStore EntityStore, entityType EntityType) CommandHandler {
-	_, name := types.GetTypeName(entityType)
+	name := types.GetTypeName(entityType)
 	handler := &aggregateCommandHandler{
 		entityStore: entityStore,
 		name:        name,

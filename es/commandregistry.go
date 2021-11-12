@@ -3,7 +3,6 @@ package es
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -20,15 +19,15 @@ type CommandRegistry interface {
 // NewCommandRegistry creates a new CommandRegistry
 func NewCommandRegistry() CommandRegistry {
 	return &commandRegistry{
-		registry: make(map[string]CommandHandler),
-		types:    make(map[string]reflect.Type),
+		handlers:      make(map[string]CommandHandler),
+		typesRegistry: types.NewRegistry(),
 	}
 }
 
 type commandRegistry struct {
 	sync.RWMutex
-	registry map[string]CommandHandler
-	types    map[string]reflect.Type
+	handlers      map[string]CommandHandler
+	typesRegistry types.Registry
 }
 
 func (r *commandRegistry) SetHandler(handler CommandHandler, cmds ...Command) {
@@ -36,9 +35,11 @@ func (r *commandRegistry) SetHandler(handler CommandHandler, cmds ...Command) {
 	defer r.Unlock()
 
 	for _, cmd := range cmds {
-		rawType, name := types.GetTypeName(cmd)
-		r.registry[name] = handler
-		r.types[name] = rawType
+		entry, err := r.typesRegistry.Add(types.RegisterFromType(cmd))
+		if err != nil {
+			panic(err)
+		}
+		r.handlers[entry.Name] = handler
 	}
 }
 
@@ -47,8 +48,8 @@ func (r *commandRegistry) GetHandler(cmd Command) (CommandHandler, error) {
 		return nil, errors.New("You need to supply a command")
 	}
 
-	_, name := types.GetTypeName(cmd)
-	handler, ok := r.registry[name]
+	name := types.GetTypeName(cmd)
+	handler, ok := r.handlers[name]
 	if !ok {
 		return nil, fmt.Errorf("Cannot find %s in registry", name)
 	}
@@ -56,27 +57,16 @@ func (r *commandRegistry) GetHandler(cmd Command) (CommandHandler, error) {
 }
 
 func (r *commandRegistry) NewCommand(name string) (Command, error) {
-	for key, value := range r.types {
-
-		if isCommandMatch(key, name) {
-			i := reflect.New(value).Interface()
-			return i.(Command), nil
-		}
-	}
-	return nil, fmt.Errorf("Cannot find %s in registry", name)
-}
-
-func isCommandMatch(key, name string) bool {
-	nkey := strings.ToLower(key)
-
-	if strings.EqualFold(name, nkey) {
-		return true
+	names := []string{name}
+	if strings.HasSuffix(strings.ToLower(name), "command") {
+		names = append(names, name[:len(name)-7])
 	}
 
-	if strings.HasSuffix(nkey, "command") {
-		mkey := nkey[:len(nkey)-7]
-		return strings.EqualFold(name, mkey)
+	entry, ok := r.typesRegistry.GetFirstByNames(names)
+	if !ok {
+		return nil, fmt.Errorf("Cannot find %s in registry", name)
 	}
 
-	return false
+	obj := entry.Factory()
+	return obj.(Command), nil
 }

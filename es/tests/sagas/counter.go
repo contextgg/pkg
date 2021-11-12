@@ -43,7 +43,7 @@ func (s *counter) runDemoCreated(ctx context.Context, event events.Event, data *
 }
 
 func NewCounter(entityStore es.EntityStore) es.Saga {
-	_, name := types.GetTypeName(&aggregates.Demo{})
+	name := types.GetTypeName(&aggregates.Demo{})
 
 	return &counter{
 		name:        name,

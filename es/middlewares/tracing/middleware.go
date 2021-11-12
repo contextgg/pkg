@@ -15,7 +15,7 @@ import (
 func NewMiddleware() es.CommandHandlerMiddleware {
 	return es.CommandHandlerMiddleware(func(h es.CommandHandler) es.CommandHandler {
 		return es.CommandHandlerFunc(func(ctx context.Context, cmd es.Command) error {
-			_, name := types.GetTypeName(cmd)
+			name := types.GetTypeName(cmd)
 			opName := fmt.Sprintf("Command(%s)", name)
 			sp, ctx := opentracing.StartSpanFromContext(ctx, opName)
 

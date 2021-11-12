@@ -131,6 +131,37 @@ type data struct {
 	legacy bool
 }
 
+func (s *data) event(evt event) (events.Event, error) {
+	entry, ok := types.GetByName(evt.Type)
+	if !ok {
+		return events.Event{}, fmt.Errorf("Type %s is not in registry", evt.Type)
+	}
+	data, err := types.EntryUnmarshal(entry, evt.Data, types.UseLegacyJsonSerializer(s.legacy))
+	if err != nil {
+		return events.Event{}, err
+	}
+
+	return events.Event{
+		AggregateId:   evt.AggregateId,
+		AggregateType: evt.AggregateType,
+		Version:       evt.Version,
+		Type:          evt.Type,
+		Timestamp:     evt.Timestamp,
+		Data:          data,
+	}, nil
+}
+func (s *data) events(evts []event) ([]events.Event, error) {
+	out := make([]events.Event, len(evts))
+	for i, evt := range evts {
+		m, err := s.event(evt)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = m
+	}
+	return out, nil
+}
+
 func (s *data) SaveEntity(ctx context.Context, namespace string, entity Entity) error {
 	entity.SetNamespace(namespace)
 
@@ -173,7 +204,7 @@ func (s *data) SaveSnapshot(ctx context.Context, namespace string, rev string, a
 func (s *data) SaveEvents(ctx context.Context, namespace string, evts ...events.Event) error {
 	all := make([]event, len(evts))
 	for i, evt := range evts {
-		data, err := types.Marshal(evt.Data, s.legacy)
+		data, err := types.JsonMarshal(evt.Data, types.UseLegacyJsonSerializer(s.legacy))
 		if err != nil {
 			return err
 		}
@@ -232,7 +263,8 @@ func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, a
 		}
 		return err
 	}
-	if _, err := types.Unmarshal(agg, ss.Aggregate, true); err != nil {
+
+	if err := types.JsonUnmarshal(ss.Aggregate, agg, types.UseLegacyJsonSerializer(s.legacy)); err != nil {
 		return err
 	}
 	return nil
@@ -240,7 +272,6 @@ func (s *data) LoadSnapshot(ctx context.Context, namespace string, rev string, a
 func (s *data) LoadEventsByType(ctx context.Context, namespace string, aggregateTypeName string, eventTypeNames ...string) ([]events.Event, error) {
 	// Select all users.
 	var evts []event
-
 	if err := s.db.NewSelect().
 		Model(&evts).
 		Where("namespace = ?", namespace).
@@ -252,25 +283,7 @@ func (s *data) LoadEventsByType(ctx context.Context, namespace string, aggregate
 		}
 		return nil, err
 	}
-
-	out := make([]events.Event, len(evts))
-	for i, evt := range evts {
-		data, err := types.UnmarshalByName(evt.Type, evt.Data, s.legacy)
-		if err != nil {
-			return nil, err
-		}
-
-		m := events.Event{
-			AggregateId:   evt.AggregateId,
-			AggregateType: evt.AggregateType,
-			Version:       evt.Version,
-			Type:          evt.Type,
-			Timestamp:     evt.Timestamp,
-			Data:          data,
-		}
-		out[i] = m
-	}
-	return out, nil
+	return s.events(evts)
 }
 func (s *data) LoadUniqueEvents(ctx context.Context, namespace string, typeName string) ([]events.Event, error) {
 	// Select all users.
@@ -287,25 +300,7 @@ func (s *data) LoadUniqueEvents(ctx context.Context, namespace string, typeName 
 		}
 		return nil, err
 	}
-
-	out := make([]events.Event, len(evts))
-	for i, evt := range evts {
-		data, err := types.UnmarshalByName(evt.Type, evt.Data, s.legacy)
-		if err != nil {
-			return nil, err
-		}
-
-		m := events.Event{
-			AggregateId:   evt.AggregateId,
-			AggregateType: evt.AggregateType,
-			Version:       evt.Version,
-			Type:          evt.Type,
-			Timestamp:     evt.Timestamp,
-			Data:          data,
-		}
-		out[i] = m
-	}
-	return out, nil
+	return s.events(evts)
 }
 func (s *data) LoadAllEvents(ctx context.Context, namespace string) ([]events.Event, error) {
 	// Select all users.
@@ -320,25 +315,25 @@ func (s *data) LoadAllEvents(ctx context.Context, namespace string) ([]events.Ev
 		}
 		return nil, err
 	}
-
-	out := make([]events.Event, len(evts))
-	for i, evt := range evts {
-		data, err := types.UnmarshalByName(evt.Type, evt.Data, s.legacy)
-		if err != nil {
-			return nil, err
+	return s.events(evts)
+}
+func (s *data) LoadEvents(ctx context.Context, namespace string, id string, typeName string, fromVersion int) ([]events.Event, error) {
+	// Select all users.
+	var evts []event
+	if err := s.db.NewSelect().
+		Model(&evts).
+		Where("namespace = ?", namespace).
+		Where("aggregate_id = ?", id).
+		Where("aggregate_type = ?", typeName).
+		Where("version > ?", fromVersion).
+		Order("version").
+		Scan(ctx); err != nil {
+		if sql.ErrNoRows == err {
+			return nil, ErrNoRows
 		}
-
-		m := events.Event{
-			AggregateId:   evt.AggregateId,
-			AggregateType: evt.AggregateType,
-			Version:       evt.Version,
-			Type:          evt.Type,
-			Timestamp:     evt.Timestamp,
-			Data:          data,
-		}
-		out[i] = m
+		return nil, err
 	}
-	return out, nil
+	return s.events(evts)
 }
 func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeName string, version int) (*events.Event, error) {
 	// Select all users.
@@ -357,7 +352,11 @@ func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeN
 		return nil, err
 	}
 
-	data, err := types.UnmarshalByName(evt.Type, evt.Data, s.legacy)
+	entry, ok := types.GetByName(evt.Type)
+	if !ok {
+		return nil, fmt.Errorf("Type %s is not in registry", evt.Type)
+	}
+	data, err := types.EntryUnmarshal(entry, evt.Data, types.UseLegacyJsonSerializer(s.legacy))
 	if err != nil {
 		return nil, err
 	}
@@ -371,40 +370,4 @@ func (s *data) LoadEvent(ctx context.Context, namespace string, id string, typeN
 		Data:          data,
 	}
 	return m, nil
-}
-func (s *data) LoadEvents(ctx context.Context, namespace string, id string, typeName string, fromVersion int) ([]events.Event, error) {
-	// Select all users.
-	var evts []event
-	if err := s.db.NewSelect().
-		Model(&evts).
-		Where("namespace = ?", namespace).
-		Where("aggregate_id = ?", id).
-		Where("aggregate_type = ?", typeName).
-		Where("version > ?", fromVersion).
-		Order("version").
-		Scan(ctx); err != nil {
-		if sql.ErrNoRows == err {
-			return nil, ErrNoRows
-		}
-		return nil, err
-	}
-
-	out := make([]events.Event, len(evts))
-	for i, evt := range evts {
-		data, err := types.UnmarshalByName(evt.Type, evt.Data, s.legacy)
-		if err != nil {
-			return nil, err
-		}
-
-		m := events.Event{
-			AggregateId:   evt.AggregateId,
-			AggregateType: evt.AggregateType,
-			Version:       evt.Version,
-			Type:          evt.Type,
-			Timestamp:     evt.Timestamp,
-			Data:          data,
-		}
-		out[i] = m
-	}
-	return out, nil
 }

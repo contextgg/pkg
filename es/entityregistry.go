@@ -3,7 +3,6 @@ package es
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/contextgg/pkg/types"
@@ -35,7 +34,6 @@ type EntityRegistry interface {
 type entityRegistry struct {
 	sync.RWMutex
 	registry map[string]EntityOptions
-	types    map[string]reflect.Type
 }
 
 func (r *entityRegistry) SetEntity(entityType EntityType, opts ...EntityOption) error {
@@ -47,9 +45,8 @@ func (r *entityRegistry) SetEntity(entityType EntityType, opts ...EntityOption) 
 		return errors.New("You need to supply a factory method")
 	}
 
-	rawType, name := types.GetTypeName(entityType)
+	name := types.GetTypeName(entityType)
 	r.registry[name] = options
-	r.types[name] = rawType
 	return nil
 }
 
@@ -66,6 +63,5 @@ func (r *entityRegistry) GetOptions(entityName string) (EntityOptions, error) {
 func NewEntityRegistry() EntityRegistry {
 	return &entityRegistry{
 		registry: make(map[string]EntityOptions),
-		types:    make(map[string]reflect.Type),
 	}
 }

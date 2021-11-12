@@ -11,7 +11,7 @@ import (
 
 // NewEvent will create an event from data
 func NewEvent(ctx context.Context, entity Entity, version int, data interface{}) events.Event {
-	_, typeName := types.GetTypeName(data)
+	typeName := types.GetTypeName(data)
 	timestamp := time.Now()
 	meta := metadata.FromContext(ctx)
 

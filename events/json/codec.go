@@ -59,13 +59,13 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (*events.Even
 		return nil, nil, fmt.Errorf("Could not decode event: %w", err)
 	}
 
-	typeData, ok := types.GetTypeData(out.Type)
+	entry, ok := types.GetByName(out.Type)
 	if !ok {
 		return nil, nil, fmt.Errorf("Could not find type with name %s", out.Type)
 	}
 
-	data := typeData.Factory()
-	if err := json.Unmarshal(out.Data, data); err != nil {
+	data, err := types.EntryUnmarshal(entry, out.Data)
+	if err != nil {
 		return nil, nil, fmt.Errorf("Could not decode event data %w", err)
 	}
 

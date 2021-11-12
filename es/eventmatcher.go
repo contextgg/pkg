@@ -18,7 +18,7 @@ func MatchAny() EventMatcher {
 // MatchAnyInRegistry matches any event found in the registry.
 func MatchAnyInRegistry() EventMatcher {
 	return func(e events.Event) bool {
-		_, ok := types.GetTypeData(e.Type)
+		_, ok := types.GetByName(e.Type)
 		return ok
 	}
 }
@@ -26,7 +26,7 @@ func MatchAnyInRegistry() EventMatcher {
 // IsLocal only events that aren't local
 func IsLocal() EventMatcher {
 	return func(e events.Event) bool {
-		if d, ok := types.GetTypeData(e.Type); ok {
+		if d, ok := types.GetByName(e.Type); ok {
 			return d.InternalType
 		}
 		return true
@@ -44,7 +44,7 @@ func MatchEventData(t string) EventMatcher {
 func MatchAnyEventDataOf(allTypes ...interface{}) EventMatcher {
 	all := make(map[string]interface{})
 	for _, t := range allTypes {
-		_, name := types.GetTypeName(t)
+		name := types.GetTypeName(t)
 		all[name] = t
 	}
 
