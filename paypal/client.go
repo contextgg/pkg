@@ -34,6 +34,9 @@ type Client interface {
 	SubscriptionListTransactions(subId string, startTime, endTime time.Time) (*SubscriptionTransactionsResp, error)
 
 	CreateSinglePayout(p Payout) (*PayoutResponse, error)
+	GetPayout(payoutBatchID string) (*PayoutResponse, error)
+	GetPayoutItem(payoutItemID string) (*PayoutItemResponse, error)
+	CancelPayoutItem(payoutItemID string) (*PayoutItemResponse, error)
 
 	Transactions(query *TransactionQuery) (*TransactionsResponse, error)
 }
