@@ -471,6 +471,7 @@ type (
 		SoftDescriptor string              `json:"soft_descriptor,omitempty"`
 		Items          []Item              `json:"items,omitempty"`
 		Shipping       *ShippingDetail     `json:"shipping,omitempty"`
+		Payments       *Payments           `json:"payments,omitempty"`
 	}
 
 	// Payments struct
