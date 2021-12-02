@@ -462,9 +462,15 @@ type (
 
 	// PurchaseUnit struct
 	PurchaseUnit struct {
-		ReferenceID string              `json:"reference_id"`
-		Amount      *PurchaseUnitAmount `json:"amount,omitempty"`
-		Payments    *Payments           `json:"payments,omitempty"`
+		ReferenceID    string              `json:"reference_id,omitempty"`
+		Amount         *PurchaseUnitAmount `json:"amount"`
+		Payee          *PayeeForOrders     `json:"payee,omitempty"`
+		Description    string              `json:"description,omitempty"`
+		CustomID       string              `json:"custom_id,omitempty"`
+		InvoiceID      string              `json:"invoice_id,omitempty"`
+		SoftDescriptor string              `json:"soft_descriptor,omitempty"`
+		Items          []Item              `json:"items,omitempty"`
+		Shipping       *ShippingDetail     `json:"shipping,omitempty"`
 	}
 
 	// Payments struct
