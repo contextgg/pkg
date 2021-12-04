@@ -178,6 +178,8 @@ func (db *DB) Table(typ reflect.Type) *schema.Table {
 	return db.dialect.Tables().Get(typ)
 }
 
+// RegisterModel registers models by name so they can be referenced in table relations
+// and fixtures.
 func (db *DB) RegisterModel(models ...interface{}) {
 	db.dialect.Tables().Register(models...)
 }
@@ -199,6 +201,20 @@ func (db *DB) WithNamedArg(name string, value interface{}) *DB {
 
 func (db *DB) Formatter() schema.Formatter {
 	return db.fmter
+}
+
+// UpdateFQN returns a fully qualified column name. For MySQL, it returns the column name with
+// the table alias. For other RDBMS, it returns just the column name.
+func (db *DB) UpdateFQN(alias, column string) Ident {
+	if db.HasFeature(feature.UpdateMultiTable) {
+		return Ident(alias + "." + column)
+	}
+	return Ident(column)
+}
+
+// HasFeature uses feature package to report whether the underlying DBMS supports this feature.
+func (db *DB) HasFeature(feat feature.Feature) bool {
+	return db.fmter.HasFeature(feat)
 }
 
 //------------------------------------------------------------------------------
@@ -356,7 +372,8 @@ func (db *DB) PrepareContext(ctx context.Context, query string) (Stmt, error) {
 //------------------------------------------------------------------------------
 
 type Tx struct {
-	db *DB
+	ctx context.Context
+	db  *DB
 	*sql.Tx
 }
 
@@ -369,11 +386,20 @@ func (db *DB) RunInTx(
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint:errcheck
+
+	var done bool
+
+	defer func() {
+		if !done {
+			_ = tx.Rollback()
+		}
+	}()
 
 	if err := fn(ctx, tx); err != nil {
 		return err
 	}
+
+	done = true
 	return tx.Commit()
 }
 
@@ -382,14 +408,31 @@ func (db *DB) Begin() (Tx, error) {
 }
 
 func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error) {
+	ctx, event := db.beforeQuery(ctx, nil, "BEGIN", nil, nil)
 	tx, err := db.DB.BeginTx(ctx, opts)
+	db.afterQuery(ctx, event, nil, err)
 	if err != nil {
 		return Tx{}, err
 	}
 	return Tx{
-		db: db,
-		Tx: tx,
+		ctx: ctx,
+		db:  db,
+		Tx:  tx,
 	}, nil
+}
+
+func (tx Tx) Commit() error {
+	ctx, event := tx.db.beforeQuery(tx.ctx, nil, "COMMIT", nil, nil)
+	err := tx.Tx.Commit()
+	tx.db.afterQuery(ctx, event, nil, err)
+	return err
+}
+
+func (tx Tx) Rollback() error {
+	ctx, event := tx.db.beforeQuery(tx.ctx, nil, "ROLLBACK", nil, nil)
+	err := tx.Tx.Rollback()
+	tx.db.afterQuery(ctx, event, nil, err)
+	return err
 }
 
 func (tx Tx) Exec(query string, args ...interface{}) (sql.Result, error) {

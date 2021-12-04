@@ -1,3 +1,55 @@
+## [1.0.19](https://github.com/uptrace/bun/compare/v1.0.18...v1.0.19) (2021-11-30)
+
+
+### Features
+
+* add support for column:name to specify column name ([e37b460](https://github.com/uptrace/bun/commit/e37b4602823babc8221970e086cfed90c6ad4cf4))
+
+
+
+## [1.0.18](https://github.com/uptrace/bun/compare/v1.0.17...v1.0.18) (2021-11-24)
+
+
+### Bug Fixes
+
+* use correct operation for UpdateQuery ([687a004](https://github.com/uptrace/bun/commit/687a004ef7ec6fe1ef06c394965dd2c2d822fc82))
+
+
+### Features
+
+* add pgdriver.Notify ([7ee443d](https://github.com/uptrace/bun/commit/7ee443d1b869d8ddc4746850f7425d0a9ccd012b))
+* CreateTableQuery.PartitionBy and CreateTableQuery.TableSpace ([cd3ab4d](https://github.com/uptrace/bun/commit/cd3ab4d8f3682f5a30b87c2ebc2d7e551d739078))
+* **pgdriver:** add CopyFrom and CopyTo ([0b97703](https://github.com/uptrace/bun/commit/0b977030b5c05f509e11d13550b5f99dfd62358d))
+* support InsertQuery.Ignore on PostgreSQL ([1aa9d14](https://github.com/uptrace/bun/commit/1aa9d149da8e46e63ff79192e394fde4d18d9b60))
+
+
+
+## [1.0.17](https://github.com/uptrace/bun/compare/v1.0.16...v1.0.17) (2021-11-11)
+
+
+### Bug Fixes
+
+* don't call rollback when tx is already done ([8246c2a](https://github.com/uptrace/bun/commit/8246c2a63e2e6eba314201c6ba87f094edf098b9))
+* **mysql:** escape backslash char in strings ([fb32029](https://github.com/uptrace/bun/commit/fb32029ea7604d066800b16df21f239b71bf121d))
+
+
+
+## [1.0.16](https://github.com/uptrace/bun/compare/v1.0.15...v1.0.16) (2021-11-07)
+
+
+### Bug Fixes
+
+* call query hook when tx is started, committed, or rolled back ([30e85b5](https://github.com/uptrace/bun/commit/30e85b5366b2e51951ef17a0cf362b58f708dab1))
+* **pgdialect:** auto-enable array support if the sql type is an array ([62c1012](https://github.com/uptrace/bun/commit/62c1012b2482e83969e5c6f5faf89e655ce78138))
+
+
+### Features
+
+* support multiple tag options join:left_col1=right_col1,join:left_col2=right_col2 ([78cd5aa](https://github.com/uptrace/bun/commit/78cd5aa60a5c7d1323bb89081db2b2b811113052))
+* **tag:** log with bad tag name ([4e82d75](https://github.com/uptrace/bun/commit/4e82d75be2dabdba1a510df4e1fbb86092f92f4c))
+
+
+
 ## [1.0.15](https://github.com/uptrace/bun/compare/v1.0.14...v1.0.15) (2021-10-29)
 
 
