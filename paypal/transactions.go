@@ -2,6 +2,7 @@ package paypal
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -42,8 +43,8 @@ type TransactionQuery struct {
 
 	PaymentInstrumentType       *string
 	BalanceAffectingRecordsOnly *string
-	PageSize                    *string
-	Page                        *string
+	PageSize                    *int
+	Page                        *int
 }
 
 type TransactionsResponse struct {
@@ -226,10 +227,10 @@ func (c *client) Transactions(q *TransactionQuery) (*TransactionsResponse, error
 		query.Add("balance_affecting_records_only", *q.BalanceAffectingRecordsOnly)
 	}
 	if q.PageSize != nil {
-		query.Add("page_size", *q.PageSize)
+		query.Add("page_size", strconv.Itoa(*q.PageSize))
 	}
 	if q.Page != nil {
-		query.Add("page", *q.Page)
+		query.Add("page", strconv.Itoa(*q.Page))
 	}
 	if q.Fields != nil {
 		query.Add("fields", *q.Fields)
