@@ -14,13 +14,13 @@ func WriteJSON(w http.ResponseWriter, statusCode int, obj interface{}) {
 }
 
 func WriteError(w http.ResponseWriter, err error) {
-	httpErr := err.(*HTTPError)
-	if httpErr != nil {
-		w.WriteHeader(httpErr.Code)
-		w.Header().Add("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(httpErr)
-		return
+	httpErr, ok := err.(*HTTPError)
+	if !ok {
+		httpErr = NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+	w.WriteHeader(httpErr.Code)
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(httpErr)
 }
 
 func WriteCommand(w http.ResponseWriter, cmd es.Command) {
