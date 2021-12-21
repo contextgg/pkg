@@ -12,19 +12,26 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/contextgg/pkg/ns"
 	"github.com/contextgg/pkg/storage"
 )
 
 var defaultFilePerm = os.FileMode(0664)
 
 type fileStorage struct {
-	abs string
+	abs          string
+	useNamespace bool
 }
 
 func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int64, src io.Reader) (int64, error) {
 	key := fmt.Sprintf("%s_%d", id, offset)
-	path := store.keyWithPrefix(key)
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
+	p := store.keyWithPrefix(ctx, key)
+
+	if err := os.MkdirAll(path.Dir(p), os.ModePerm); err != nil {
+		return 0, err
+	}
+
+	file, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
 	if err != nil {
 		return 0, err
 	}
@@ -34,13 +41,14 @@ func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int6
 	return n, err
 }
 func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadCloser, error) {
-	path := store.keyWithPrefix(id)
-	return os.Open(path)
+	p := store.keyWithPrefix(ctx, id)
+	return os.Open(p)
 }
 func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
 	meta := map[string]string{}
+	p := store.keyWithPrefix(ctx, id) + ".meta"
 
-	f, err := os.OpenFile(store.keyWithPrefix(id)+".meta", os.O_RDONLY, defaultFilePerm)
+	f, err := os.OpenFile(p, os.O_RDONLY, defaultFilePerm)
 	if os.IsNotExist(err) {
 		return meta, nil
 	}
@@ -55,15 +63,16 @@ func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[strin
 	return meta, nil
 }
 func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata map[string]string) error {
-	prefix := fmt.Sprintf("%s_", store.keyWithPrefix(id))
+	p := store.keyWithPrefix(ctx, id)
+	prefix := fmt.Sprintf("%s_", p)
 	var chunks []string
 
 	// walk it?
-	if err := filepath.Walk(store.abs, func(path string, info fs.FileInfo, err error) error {
-		if info.IsDir() || !strings.HasPrefix(path, prefix) {
+	if err := filepath.Walk(store.abs, func(p string, info fs.FileInfo, err error) error {
+		if info.IsDir() || !strings.HasPrefix(p, prefix) {
 			return nil
 		}
-		chunks = append(chunks, path)
+		chunks = append(chunks, p)
 		return nil
 	}); err != nil {
 		return err
@@ -73,7 +82,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 		return nil
 	}
 
-	file, err := os.OpenFile(store.keyWithPrefix(id), os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
+	file, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
 	if err != nil {
 		return err
 	}
@@ -101,14 +110,14 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 
 	// save metadata!
 	if metadata != nil {
-		metafilename := store.keyWithPrefix(id) + ".meta"
+		metafilename := store.keyWithPrefix(ctx, id) + ".meta"
 
 		// try truncate!
 		if err := os.Truncate(metafilename, 0); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 
-		m, err := os.OpenFile(store.keyWithPrefix(id)+".meta", os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
+		m, err := os.OpenFile(metafilename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, defaultFilePerm)
 		if err != nil {
 			return err
 		}
@@ -120,12 +129,17 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 	}
 	return nil
 }
-func (store *fileStorage) keyWithPrefix(key string) string {
+func (store *fileStorage) keyWithPrefix(ctx context.Context, key string) string {
+	if store.useNamespace {
+		namespace := ns.FromContext(ctx)
+		return path.Join(store.abs, namespace, key)
+	}
+
 	return path.Join(store.abs, key)
 }
 
-func NewFileStorage(path string, remake bool) (storage.FileStorage, error) {
-	abs, err := filepath.Abs(path)
+func NewFileStorage(p string, useNamespace bool, remake bool) (storage.FileStorage, error) {
+	abs, err := filepath.Abs(p)
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +148,8 @@ func NewFileStorage(path string, remake bool) (storage.FileStorage, error) {
 		os.RemoveAll(abs)
 	}
 
-	if err := os.MkdirAll(abs, os.ModePerm); err != nil {
-		return nil, err
-	}
-
 	return &fileStorage{
-		abs: abs,
+		abs:          abs,
+		useNamespace: useNamespace,
 	}, nil
 }

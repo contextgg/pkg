@@ -6,25 +6,26 @@ import (
 	"io"
 	"strings"
 
+	"github.com/contextgg/pkg/ns"
 	"github.com/contextgg/pkg/storage"
 )
 
 const CONCURRENT_SIZE_REQUESTS = 32
 
 type fileStorage struct {
-	Bucket       string
-	ObjectPrefix string
-	Service      GCSAPI
+	bucket       string
+	useNamespace bool
+	service      GCSAPI
 }
 
 func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int64, src io.Reader) (int64, error) {
-	cid := fmt.Sprintf("%s_%d", store.keyWithPrefix(id), offset)
+	cid := fmt.Sprintf("%s_%d", store.keyWithPrefix(ctx, id), offset)
 	objectParams := GCSObjectParams{
-		Bucket: store.Bucket,
+		Bucket: store.bucket,
 		ID:     cid,
 	}
 
-	n, err := store.Service.WriteObject(ctx, objectParams, src)
+	n, err := store.service.WriteObject(ctx, objectParams, src)
 	if err != nil {
 		return 0, err
 	}
@@ -34,11 +35,11 @@ func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int6
 
 func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadCloser, error) {
 	params := GCSObjectParams{
-		Bucket: store.Bucket,
-		ID:     store.keyWithPrefix(id),
+		Bucket: store.bucket,
+		ID:     store.keyWithPrefix(ctx, id),
 	}
 
-	r, err := store.Service.ReadObject(ctx, params)
+	r, err := store.service.ReadObject(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -48,47 +49,47 @@ func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadClos
 
 func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
 	params := GCSObjectParams{
-		Bucket: store.Bucket,
-		ID:     store.keyWithPrefix(id),
+		Bucket: store.bucket,
+		ID:     store.keyWithPrefix(ctx, id),
 	}
 
-	return store.Service.GetObjectMetadata(ctx, params)
+	return store.service.GetObjectMetadata(ctx, params)
 }
 
 func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata map[string]string) error {
-	prefix := fmt.Sprintf("%s_", store.keyWithPrefix(id))
+	prefix := fmt.Sprintf("%s_", store.keyWithPrefix(ctx, id))
 	filterParams := GCSFilterParams{
-		Bucket: store.Bucket,
+		Bucket: store.bucket,
 		Prefix: prefix,
 	}
 
-	names, err := store.Service.FilterObjects(ctx, filterParams)
+	names, err := store.service.FilterObjects(ctx, filterParams)
 	if err != nil {
 		return err
 	}
 
 	composeParams := GCSComposeParams{
-		Bucket:      store.Bucket,
-		Destination: store.keyWithPrefix(id),
+		Bucket:      store.bucket,
+		Destination: store.keyWithPrefix(ctx, id),
 		Sources:     names,
 	}
 
-	err = store.Service.ComposeObjects(ctx, composeParams)
+	err = store.service.ComposeObjects(ctx, composeParams)
 	if err != nil {
 		return err
 	}
 
-	err = store.Service.DeleteObjectsWithFilter(ctx, filterParams)
+	err = store.service.DeleteObjectsWithFilter(ctx, filterParams)
 	if err != nil {
 		return err
 	}
 
 	objectParams := GCSObjectParams{
-		Bucket: store.Bucket,
-		ID:     store.keyWithPrefix(id),
+		Bucket: store.bucket,
+		ID:     store.keyWithPrefix(ctx, id),
 	}
 
-	err = store.Service.SetObjectMetadata(ctx, objectParams, metadata)
+	err = store.service.SetObjectMetadata(ctx, objectParams, metadata)
 	if err != nil {
 		return err
 	}
@@ -96,8 +97,11 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 	return nil
 }
 
-func (store *fileStorage) keyWithPrefix(key string) string {
-	prefix := store.ObjectPrefix
+func (store *fileStorage) keyWithPrefix(ctx context.Context, key string) string {
+	var prefix string
+	if store.useNamespace {
+		prefix = ns.FromContext(ctx)
+	}
 	if prefix != "" && !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
@@ -109,7 +113,7 @@ func (store *fileStorage) keyWithPrefix(key string) string {
 
 // New constructs a new GCS storage backend using the supplied GCS bucket name
 // and service object.
-func NewFileStorage(bucket string, projectId string, service GCSAPI) (storage.FileStorage, error) {
+func NewFileStorage(bucket string, projectId string, useNamespace bool, service GCSAPI) (storage.FileStorage, error) {
 	// todo create bucket?
 	ctx := context.Background()
 	if err := service.CreateBucket(ctx, GCSBucketParams{
@@ -120,7 +124,8 @@ func NewFileStorage(bucket string, projectId string, service GCSAPI) (storage.Fi
 	}
 
 	return &fileStorage{
-		Bucket:  bucket,
-		Service: service,
+		bucket:       bucket,
+		service:      service,
+		useNamespace: useNamespace,
 	}, nil
 }

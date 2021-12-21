@@ -17,7 +17,7 @@ func TestFile(t *testing.T) {
 	}
 	f := bytes.NewReader(data)
 
-	svc, err := NewFileStorage("./uploads", true)
+	svc, err := NewFileStorage("./uploads", true, true)
 	if err != nil {
 		t.Error(err)
 		return
