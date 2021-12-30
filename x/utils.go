@@ -8,8 +8,8 @@ import (
 )
 
 func WriteJSON(w http.ResponseWriter, statusCode int, obj interface{}) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(obj)
 }
 
@@ -18,8 +18,8 @@ func WriteError(w http.ResponseWriter, err error) {
 	if !ok {
 		httpErr = NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpErr.Code)
-	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(httpErr)
 }
 
@@ -29,8 +29,7 @@ func WriteCommand(w http.ResponseWriter, cmd es.Command) {
 	}{
 		AggregateId: cmd.GetAggregateId(),
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
-	return
 }
