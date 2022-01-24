@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/square/go-jose"
+	"gopkg.in/square/go-jose.v2"
 )
 
 // JwksSource for fetching keys

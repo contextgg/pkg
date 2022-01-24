@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/square/go-jose"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/sync/semaphore"
+	"gopkg.in/square/go-jose.v2"
 )
 
 // JwksClient interface
