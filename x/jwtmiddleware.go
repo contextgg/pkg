@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -109,4 +110,19 @@ func (config *JWTConfig) keyFunc(t *jwt.Token) (interface{}, error) {
 		return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 	}
 	return config.SigningKey, nil
+}
+
+func NewJWTConfig(signingKey string, jwksUri string, claims jwt.Claims) JWTConfig {
+	var keyfunc jwt.Keyfunc
+
+	if len(jwksUri) > 0 {
+		jwksClient := NewJwksClient(jwksUri, time.Hour, 12*time.Hour)
+		keyfunc = jwksClient.KeyFunc
+	}
+
+	return JWTConfig{
+		Claims:     claims,
+		SigningKey: []byte(signingKey),
+		KeyFunc:    keyfunc,
+	}
 }
