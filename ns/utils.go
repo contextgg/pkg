@@ -17,6 +17,5 @@ func Slug(r *http.Request, suffixes ...string) string {
 		}
 	}
 
-	hostname = strings.ReplaceAll(hostname, ".", "")
 	return hostname
 }
