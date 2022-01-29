@@ -3,6 +3,8 @@ package ns
 import (
 	"net/http"
 	"strings"
+
+	"github.com/contextgg/pkg/jwks"
 )
 
 func Slug(r *http.Request, suffixes ...string) string {
@@ -18,4 +20,14 @@ func Slug(r *http.Request, suffixes ...string) string {
 	}
 
 	return hostname
+}
+
+type JwtExtractor func(interface{}) string
+
+func JwtValue(r *http.Request, extract JwtExtractor) string {
+	c := jwks.ClaimsFromContext(r.Context())
+	if c == nil {
+		return ""
+	}
+	return extract(c)
 }

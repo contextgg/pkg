@@ -3,8 +3,6 @@ package x
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/contextgg/pkg/es"
 )
 
 func WriteJSON(w http.ResponseWriter, statusCode int, obj interface{}) {
@@ -23,11 +21,11 @@ func WriteError(w http.ResponseWriter, err error) {
 	json.NewEncoder(w).Encode(httpErr)
 }
 
-func WriteCommand(w http.ResponseWriter, cmd es.Command) {
+func WriteAggregateId(w http.ResponseWriter, id string) {
 	out := struct {
 		AggregateId string `json:"aggregate_id"`
 	}{
-		AggregateId: cmd.GetAggregateId(),
+		AggregateId: id,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

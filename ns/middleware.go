@@ -32,3 +32,19 @@ func MiddlewareHeader() func(next http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 }
+
+func MiddlewareJwtAud(extractor JwtExtractor) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			namespace := JwtValue(r, extractor)
+			if len(namespace) > 0 {
+				ctx = SetNamespace(ctx, namespace)
+			}
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		}
+		return http.HandlerFunc(fn)
+	}
+}

@@ -1,4 +1,4 @@
-package x
+package jwks
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/contextgg/pkg/x"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -33,8 +34,8 @@ const (
 
 // Errors
 var (
-	ErrJWTMissing = NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
-	ErrJWTInvalid = NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
+	ErrJWTMissing = x.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
+	ErrJWTInvalid = x.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
 )
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
@@ -49,6 +50,10 @@ func jwtFromHeader(header string, authScheme string) func(r *http.Request) (stri
 	}
 }
 
+func SetToken(ctx context.Context, token interface{}) context.Context {
+	return context.WithValue(ctx, userKey, token)
+}
+
 // NewJWTMiddleware
 func NewJWTMiddleware(config JWTConfig) func(next http.Handler) http.Handler {
 	if config.KeyFunc == nil {
@@ -61,17 +66,18 @@ func NewJWTMiddleware(config JWTConfig) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			auth, err := extractor(r)
 			if err != nil {
-				WriteError(w, err)
+				x.WriteError(w, err)
 				return
 			}
 
 			token, err := config.parseToken(auth)
 			if err != nil {
-				WriteError(w, err)
+				x.WriteError(w, err)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userKey, token)
+			ctx := SetToken(r.Context(), token)
+			// ctx := context.WithValue(r.Context(), userKey, token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
