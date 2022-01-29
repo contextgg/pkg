@@ -39,14 +39,14 @@ var (
 )
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
-func jwtFromHeader(header string, authScheme string) func(r *http.Request) (string, error) {
-	return func(r *http.Request) (string, error) {
+func jwtFromHeader(header string, authScheme string) func(r *http.Request) string {
+	return func(r *http.Request) string {
 		auth := r.Header.Get(header)
 		l := len(authScheme)
 		if len(auth) > l+1 && auth[:l] == authScheme {
-			return auth[l+1:], nil
+			return auth[l+1:]
 		}
-		return "", ErrJWTMissing
+		return ""
 	}
 }
 
@@ -55,7 +55,7 @@ func SetToken(ctx context.Context, token interface{}) context.Context {
 }
 
 // NewJWTMiddleware
-func NewJWTMiddleware(config JWTConfig) func(next http.Handler) http.Handler {
+func NewJWTMiddleware(config JWTConfig, required bool) func(next http.Handler) http.Handler {
 	if config.KeyFunc == nil {
 		config.KeyFunc = config.keyFunc
 	}
@@ -64,20 +64,23 @@ func NewJWTMiddleware(config JWTConfig) func(next http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			auth, err := extractor(r)
-			if err != nil {
-				x.WriteError(w, err)
+			ctx := r.Context()
+
+			auth := extractor(r)
+			if len(auth) == 0 && required {
+				x.WriteError(w, ErrJWTMissing)
 				return
 			}
 
-			token, err := config.parseToken(auth)
-			if err != nil {
-				x.WriteError(w, err)
-				return
+			if len(auth) > 0 {
+				token, err := config.parseToken(auth)
+				if err != nil {
+					x.WriteError(w, err)
+					return
+				}
+				ctx = SetToken(ctx, token)
 			}
 
-			ctx := SetToken(r.Context(), token)
-			// ctx := context.WithValue(r.Context(), userKey, token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
