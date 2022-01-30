@@ -14,8 +14,8 @@ const MIN_KEY_LENGTH = 32
 const TSLen = 19
 
 type CsrfService interface {
-	New(r *http.Request) (string, error)
-	Verify(r *http.Request, token string) error
+	New(w http.ResponseWriter, r *http.Request) (string, error)
+	Verify(w http.ResponseWriter, r *http.Request, token string) error
 }
 
 type csrfService struct {
@@ -58,8 +58,8 @@ func (s *csrfService) verify(token, sessionId string, valid time.Duration) error
 	return nil
 }
 
-func (s *csrfService) New(r *http.Request) (string, error) {
-	session, err := s.sessionManager.Get(r)
+func (s *csrfService) New(w http.ResponseWriter, r *http.Request) (string, error) {
+	session, err := s.sessionManager.Get(w, r)
 	if err != nil {
 		return "", err
 	}
@@ -67,8 +67,8 @@ func (s *csrfService) New(r *http.Request) (string, error) {
 	return s.createCsrf(time.Now(), session.Id)
 }
 
-func (s *csrfService) Verify(r *http.Request, token string) error {
-	session, err := s.sessionManager.Get(r)
+func (s *csrfService) Verify(w http.ResponseWriter, r *http.Request, token string) error {
+	session, err := s.sessionManager.Get(w, r)
 	if err != nil {
 		return err
 	}

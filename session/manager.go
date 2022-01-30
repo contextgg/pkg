@@ -5,45 +5,43 @@ import (
 	"net/http"
 
 	"github.com/contextgg/pkg/cookier"
-	"github.com/google/uuid"
 )
 
-var NotFound = fmt.Errorf("Not found")
-
 type Manager interface {
-	New() *Session
-	Get(r *http.Request) (*Session, error)
-	Save(w http.ResponseWriter, s *Session) error
+	Get(w http.ResponseWriter, r *http.Request) (*Session, error)
 }
 
 type manager struct {
 	cm cookier.Manager
 }
 
-func (m *manager) Get(r *http.Request) (*Session, error) {
+func (m *manager) Get(w http.ResponseWriter, r *http.Request) (*Session, error) {
 	if r == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
 
-	// session?
-	sess := new(Session)
-	err := m.cm.GetCookieValue(r, sess)
-	if err == http.ErrNoCookie {
-		return nil, NotFound
+	// get from context first
+	sess, err := FromContext(r.Context())
+	if err == nil && sess != nil {
+		return sess, nil
 	}
-	if err != nil {
+
+	// get from cookie
+	sess = NewSession()
+	err = m.cm.GetCookieValue(r, sess)
+	if err != nil && err != http.ErrNoCookie {
 		return nil, err
 	}
-	return sess, nil
-}
-func (m *manager) New() *Session {
-	return &Session{
-		Id: uuid.NewString(),
-	}
-}
 
-func (m *manager) Save(w http.ResponseWriter, s *Session) error {
-	return m.cm.StoreCookie(w, s)
+	// Save the cookie
+	if err == http.ErrNoCookie {
+		// save it in the cookie
+		if err := m.cm.StoreCookie(w, sess); err != nil {
+			return nil, err
+		}
+	}
+
+	return sess, nil
 }
 
 func NewManager(cm cookier.Manager) Manager {

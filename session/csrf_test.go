@@ -17,33 +17,38 @@ func Test_It(t *testing.T) {
 	cookieManager := cookier.NewManager("session", hashKey, blockKey, &cookier.Options{})
 	sessionManager := NewManager(cookieManager)
 
+	csrfService, err := NewCsrfService(secret, sessionManager)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	// Create a new HTTP Recorder (implements http.ResponseWriter)
-	recorder := httptest.NewRecorder()
-	if err := sessionManager.Save(recorder, sessionManager.New()); err != nil {
+	w1 := httptest.NewRecorder()
+	r1 := &http.Request{}
+
+	sess, err := sessionManager.Get(w1, r1)
+	if err != nil {
 		t.Error(err)
 		return
 	}
-
-	// Copy the Cookie over to a new Request
-	r := &http.Request{
-		Header: http.Header{"Cookie": recorder.HeaderMap["Set-Cookie"]},
+	if sess == nil {
+		t.Error("Sess is nil")
+		return
 	}
 
-	service, err := NewCsrfService(secret, sessionManager)
+	w2 := httptest.NewRecorder()
+	r2 := &http.Request{
+		Header: http.Header{"Cookie": w1.HeaderMap["Set-Cookie"]},
+	}
+
+	token, err := csrfService.New(w2, r2)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	token, err := service.New(r)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	t.Log(token)
-
-	if err := service.Verify(r, token); err != nil {
+	if err := csrfService.Verify(w2, r2, token); err != nil {
 		t.Error(err)
 		return
 	}
