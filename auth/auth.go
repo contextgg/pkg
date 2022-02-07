@@ -20,20 +20,18 @@ type manager struct {
 }
 
 func (a *manager) GetAuthUser(r *http.Request) (*AuthUser, error) {
-	var id string
-	if err := a.cm.GetCookieValue(r, &id); err != nil {
+	auth := new(AuthUser)
+	if err := a.cm.GetCookieValue(r, auth); err != nil {
 		return nil, err
 	}
-	return &AuthUser{
-		Id: id,
-	}, nil
+	return auth, nil
 }
 
 func (a *manager) StoreCookie(w http.ResponseWriter, authUser *AuthUser) error {
 	if authUser == nil {
 		return fmt.Errorf("No auth user provided")
 	}
-	return a.cm.StoreCookie(w, authUser.Id)
+	return a.cm.StoreCookie(w, authUser)
 }
 
 func (a *manager) DeleteCookie(w http.ResponseWriter) error {
