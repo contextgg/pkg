@@ -1,7 +1,6 @@
 package jwks
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,18 +13,8 @@ import (
 
 type key int
 
-const userKey key = 1
-
-func TokenFromContext(ctx context.Context) interface{} {
-	return ctx.Value(userKey)
-}
-func ClaimsFromContext(ctx context.Context) interface{} {
-	token := ctx.Value(userKey).(*jwt.Token)
-	if token == nil {
-		return nil
-	}
-	return token.Claims
-}
+const tokenKey key = 1
+const bearerKey key = 1
 
 // Algorithms
 const (
@@ -48,10 +37,6 @@ func jwtFromHeader(header string, authScheme string) func(r *http.Request) strin
 		}
 		return ""
 	}
-}
-
-func SetToken(ctx context.Context, token interface{}) context.Context {
-	return context.WithValue(ctx, userKey, token)
 }
 
 // NewJWTMiddleware
@@ -78,6 +63,7 @@ func NewJWTMiddleware(config JWTConfig, required bool) func(next http.Handler) h
 					x.WriteError(w, err)
 					return
 				}
+				ctx = SetBearer(ctx, auth)
 				ctx = SetToken(ctx, token)
 			}
 
