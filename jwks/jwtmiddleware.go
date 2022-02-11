@@ -39,31 +39,28 @@ func jwtFromHeader(header string, authScheme string) func(r *http.Request) strin
 	}
 }
 
+func signatureKeyFunc(signingKey string) jwt.Keyfunc {
+	return func(t *jwt.Token) (interface{}, error) {
+		// Check the signing method
+		if t.Method.Alg() != AlgorithmHS256 {
+			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+		}
+		return signingKey, nil
+	}
+}
+
 // NewJWTMiddleware
 func NewJWTMiddleware(config JWTConfig, required bool) func(next http.Handler) http.Handler {
-	if config.KeyFunc == nil {
-		config.KeyFunc = config.keyFunc
-	}
-
-	extractor := jwtFromHeader("Authorization", "Bearer")
-
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			auth := extractor(r)
-			if len(auth) == 0 && required {
+			token, err := config.GetToken(r)
+			if err != nil && required {
 				x.WriteError(w, ErrJWTMissing)
 				return
 			}
-
-			if len(auth) > 0 {
-				token, err := config.parseToken(auth)
-				if err != nil {
-					x.WriteError(w, err)
-					return
-				}
-				ctx = SetBearer(ctx, auth)
+			if err == nil {
 				ctx = SetToken(ctx, token)
 			}
 
@@ -73,12 +70,12 @@ func NewJWTMiddleware(config JWTConfig, required bool) func(next http.Handler) h
 }
 
 type JWTConfig struct {
-	SigningKey interface{}
-	Claims     jwt.Claims
-	KeyFunc    jwt.Keyfunc
+	Claims    jwt.Claims
+	KeyFunc   jwt.Keyfunc
+	Extractor func(r *http.Request) string
 }
 
-func (config *JWTConfig) parseToken(auth string) (interface{}, error) {
+func (config *JWTConfig) parseToken(auth string) (*jwt.Token, error) {
 	token := new(jwt.Token)
 	var err error
 	// Issue #647, #656
@@ -98,26 +95,39 @@ func (config *JWTConfig) parseToken(auth string) (interface{}, error) {
 	return token, nil
 }
 
-// defaultKeyFunc returns a signing key of the given token.
-func (config *JWTConfig) keyFunc(t *jwt.Token) (interface{}, error) {
-	// Check the signing method
-	if t.Method.Alg() != AlgorithmHS256 {
-		return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+func (config *JWTConfig) GetToken(r *http.Request) (*jwt.Token, error) {
+	auth := config.Extractor(r)
+	if len(auth) == 0 {
+		return nil, ErrJWTMissing
 	}
-	return config.SigningKey, nil
+	token, err := config.parseToken(auth)
+	if err != nil {
+		return nil, err
+	}
+	return token, nil
 }
 
-func NewJWTConfig(signingKey string, jwksUri string, claims jwt.Claims) JWTConfig {
-	var keyfunc jwt.Keyfunc
+func NewJWTConfig(signingKey string, jwksUri string, claims jwt.Claims) (*JWTConfig, error) {
+	if len(signingKey) == 0 && len(jwksUri) == 0 {
+		return nil, fmt.Errorf("signing key or jwks uri is required")
+	}
 
+	c := claims
+	if c == nil {
+		c = &UserClaims{}
+	}
+
+	var keyfunc jwt.Keyfunc
 	if len(jwksUri) > 0 {
 		jwksClient := NewJwksClient(jwksUri, time.Hour, 12*time.Hour)
 		keyfunc = jwksClient.KeyFunc
+	} else {
+		keyfunc = signatureKeyFunc(signingKey)
 	}
 
-	return JWTConfig{
-		Claims:     claims,
-		SigningKey: []byte(signingKey),
-		KeyFunc:    keyfunc,
-	}
+	return &JWTConfig{
+		Claims:    c,
+		KeyFunc:   keyfunc,
+		Extractor: jwtFromHeader("Authorization", "Bearer"),
+	}, nil
 }

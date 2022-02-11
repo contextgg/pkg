@@ -19,9 +19,3 @@ func ClaimsFromContext(ctx context.Context) interface{} {
 	}
 	return token.Claims
 }
-func BearerFromContext(ctx context.Context) string {
-	return ctx.Value(bearerKey).(string)
-}
-func SetBearer(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, bearerKey, token)
-}
