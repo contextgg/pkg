@@ -28,3 +28,6 @@ func NewHTTPError(code int, message ...string) *HTTPError {
 	}
 	return he
 }
+
+var ErrUnauthorized = NewHTTPError(http.StatusUnauthorized)
+var ErrForbidden = NewHTTPError(http.StatusForbidden)
