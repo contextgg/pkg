@@ -28,9 +28,10 @@ func (r *Rule) matches(parameters map[string]string, needed string, def string) 
 			result = strings.ReplaceAll(result, fmt.Sprintf("{%s}", key), val)
 		}
 	}
-	all := strings.Split(result, ",")
+	all := strings.Split(strings.ToLower(result), ",")
+	val := strings.ToLower(def)
 	for _, a := range all {
-		if isMatch(def, a) {
+		if isMatch(val, a) {
 			return true
 		}
 	}

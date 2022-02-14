@@ -100,7 +100,7 @@ func Test_Helper(t *testing.T) {
 		},
 		{
 			relationship: "owner",
-			object:       "ApiToken:/Department/345/*",
+			object:       "ApiToken:/department/345/*",
 			out:          nil,
 		},
 	}
