@@ -48,7 +48,7 @@ func UseSigningKey(signingKey string) Option {
 			if t.Method.Alg() != AlgorithmHS256 {
 				return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 			}
-			return signingKey, nil
+			return []byte(signingKey), nil
 		}
 	}
 	return func(c *JWTConfig) {
