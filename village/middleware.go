@@ -10,7 +10,11 @@ import (
 	"github.com/contextgg/pkg/x"
 )
 
-func getUserFromToken(cfg jwks.JWTConfig, r *http.Request) (*identity.User, error) {
+func getUserFromToken(cfg *jwks.JWTConfig, r *http.Request) (*identity.User, error) {
+	if cfg == nil {
+		return nil, jwks.ErrJWTMissing
+	}
+
 	token, err := cfg.GetToken(r)
 	if err != nil {
 		return nil, err
@@ -27,7 +31,7 @@ func getUserFromToken(cfg jwks.JWTConfig, r *http.Request) (*identity.User, erro
 	return user, nil
 }
 
-func NewMiddleware(userCfg jwks.JWTConfig, apiCfg jwks.JWTConfig, required bool) func(next http.Handler) http.Handler {
+func NewMiddleware(userCfg *jwks.JWTConfig, apiCfg *jwks.JWTConfig, required bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
