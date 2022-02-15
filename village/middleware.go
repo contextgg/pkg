@@ -65,6 +65,7 @@ func NewMiddleware(userCfg *jwks.JWTConfig, apiCfg *jwks.JWTConfig, required boo
 				return
 			}
 
+			next.ServeHTTP(w, r)
 		})
 	}
 }
