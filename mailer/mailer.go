@@ -42,8 +42,8 @@ func (s *mailer) SendTemplate(toAddress, toName, templateId string, data map[str
 	return nil
 }
 
-func NewSendGrid(key string) Mailer {
-	cli := sendgrid.NewSendClient(key)
-	from := mail.NewEmail("Inflow", "no-reply@inflow.pro")
+func NewSendGrid(apiKey string, fromEmail string, fromName string) Mailer {
+	cli := sendgrid.NewSendClient(apiKey)
+	from := mail.NewEmail(fromName, fromEmail)
 	return &mailer{cli, from}
 }
