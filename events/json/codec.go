@@ -18,7 +18,7 @@ type EventWithContext struct {
 	Timestamp     time.Time              `json:"timestamp"`
 	Data          interface{}            `json:"data"`
 	Metadata      map[string]interface{} `json:"metadata"`
-	Context       map[string]interface{} `json:"context"`
+	Context       map[string]string      `json:"context"`
 }
 
 // EventCodec is a codec for marshaling and unmarshaling events
