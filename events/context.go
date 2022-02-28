@@ -35,7 +35,7 @@ func UnmarshalContext(ctx context.Context, vals map[string]string) context.Conte
 	user, ok := vals["user"]
 	if ok && len(user) > 0 {
 		u := identity.User{}
-		if err := json.Unmarshal([]byte(user), &u); err != nil {
+		if err := json.Unmarshal([]byte(user), &u); err == nil {
 			ctx = identity.SetUser(ctx, &u)
 		}
 	}
