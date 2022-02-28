@@ -5,6 +5,9 @@ type TypeOption func(o *Entry)
 var IsInternalType = TypeOption(func(e *Entry) {
 	e.InternalType = true
 })
+var IsExternalType = TypeOption(func(e *Entry) {
+	e.InternalType = false
+})
 
 func RegisterFromType(obj interface{}) TypeOption {
 	// get it!
