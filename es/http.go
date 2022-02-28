@@ -7,8 +7,8 @@ import (
 	"github.com/uptrace/bun"
 )
 
-func Middleware(db *bun.DB) func(next http.Handler) http.Handler {
-	uniter := NewUniter(db)
+func Middleware(db *bun.DB, eventPublishers ...EventPublisher) func(next http.Handler) http.Handler {
+	uniter := NewUniter(db, eventPublishers...)
 
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
