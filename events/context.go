@@ -14,7 +14,7 @@ func MarshalContext(ctx context.Context) map[string]string {
 	}
 
 	if user, ok := identity.FromContext(ctx); ok {
-		if out, err := json.Marshal(user); err != nil {
+		if out, err := json.Marshal(user); err == nil {
 			vals["user"] = string(out)
 		}
 	}
