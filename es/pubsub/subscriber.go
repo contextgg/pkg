@@ -47,6 +47,11 @@ func (c *subscriber) handle(sub *pubsub.Subscription) {
 
 func (c *subscriber) handler(ctx context.Context, msg *pubsub.Message) {
 	evt, ctx, err := c.codec.UnmarshalEvent(ctx, msg.Data)
+	if err != nil && err == events.ErrTypeNotFound {
+		msg.Ack()
+		return
+	}
+
 	if err != nil {
 		select {
 		case c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not unmarshal event: %s", err.Error()), Ctx: ctx}:
@@ -55,8 +60,6 @@ func (c *subscriber) handler(ctx context.Context, msg *pubsub.Message) {
 		msg.Nack()
 		return
 	}
-
-	ctx = es.SetIsPublisher(ctx)
 
 	// Notify all observers about the event.
 	if err := c.eventHandler.HandleEvent(ctx, *evt); err != nil {

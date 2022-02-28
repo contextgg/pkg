@@ -61,7 +61,7 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (*events.Even
 
 	entry, ok := types.GetByName(out.Type)
 	if !ok {
-		return nil, nil, fmt.Errorf("Could not find type with name %s", out.Type)
+		return nil, nil, events.ErrTypeNotFound
 	}
 
 	data, err := types.EntryUnmarshal(entry, out.Data)

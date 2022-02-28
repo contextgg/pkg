@@ -54,18 +54,25 @@ func (c *subscriber) handle(sub *nats.Subscription) {
 func (c *subscriber) handler(msg *nats.Msg) {
 	ctx := context.Background()
 	evt, ctx, err := c.codec.UnmarshalEvent(ctx, msg.Data)
-	if err != nil {
-		c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not unmarshal event: %s", err.Error()), Ctx: ctx}
+	if err != nil && err == events.ErrTypeNotFound {
+		msg.Ack()
 		return
 	}
 
-	ctx = es.SetIsPublisher(ctx)
+	if err != nil {
+		c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not unmarshal event: %s", err.Error()), Ctx: ctx}
+		msg.Nak()
+		return
+	}
 
 	// Notify all observers about the event.
 	if err := c.eventHandler.HandleEvent(ctx, *evt); err != nil {
 		c.errCh <- es.EventBusError{Err: fmt.Errorf("Could not handle event: %s", err.Error()), Ctx: ctx, Event: evt}
+		msg.Nak()
 		return
 	}
+
+	msg.Ack()
 }
 
 // NewSubscriber creates a subscriber
