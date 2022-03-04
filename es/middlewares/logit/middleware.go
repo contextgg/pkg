@@ -22,8 +22,8 @@ func NewMiddleware(l logger.Logger) es.CommandHandlerMiddleware {
 				l.Error("Command failed", "err", err, "cmd", name, "start", start, "duration", duration)
 				return err
 			}
-			l.Error("Command completed", "cmd", name, "start", start, "duration", duration)
 
+			l.Info("Command completed", "cmd", name, "start", start, "duration", duration)
 			return nil
 		})
 	})
