@@ -30,7 +30,7 @@ func condenseErrors(errs []error) error {
 }
 
 type Registry interface {
-	Add(*Entry) error
+	Add(...*Entry) error
 	GetByName(name string) (*Entry, bool)
 }
 
@@ -38,18 +38,19 @@ type registry struct {
 	names map[string]*Entry
 }
 
-func (r *registry) Add(e *Entry) error {
-	// register all names.
-	for _, name := range e.Names {
-		// do we already have one registered?
-		lower := strings.ToLower(name)
-		if _, ok := r.names[lower]; ok {
-			return ErrAlreadyRegistered
+func (r *registry) Add(entries ...*Entry) error {
+	for _, e := range entries {
+		// register all names.
+		for _, name := range e.Names {
+			// do we already have one registered?
+			lower := strings.ToLower(name)
+			if _, ok := r.names[lower]; ok {
+				return ErrAlreadyRegistered
+			}
+
+			r.names[lower] = e
 		}
-
-		r.names[lower] = e
 	}
-
 	return nil
 }
 func (r *registry) GetByName(name string) (*Entry, bool) {
