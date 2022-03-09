@@ -7,8 +7,6 @@ import (
 	"github.com/contextgg/pkg/events"
 )
 
-var isLocal = IsLocal()
-
 // EventPublisher for publishing events
 type EventPublisher interface {
 	// PublishEvent the event on the bus.
@@ -27,7 +25,7 @@ func (ps EventPublishers) PublishEvents(ctx context.Context, evts []events.Event
 	var errs []error
 	for _, p := range ps {
 		for _, evt := range evts {
-			if isLocal(evt) {
+			if !IsPublicEvent(evt.Type) {
 				continue
 			}
 

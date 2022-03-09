@@ -23,16 +23,6 @@ func MatchAnyInRegistry() EventMatcher {
 	}
 }
 
-// IsLocal only events that aren't local
-func IsLocal() EventMatcher {
-	return func(e events.Event) bool {
-		if d, ok := types.GetByName(e.Type); ok {
-			return d.InternalType
-		}
-		return true
-	}
-}
-
 // MatchEvent matches a specific event type, nil events never match.
 func MatchEventData(t string) EventMatcher {
 	return func(e events.Event) bool {

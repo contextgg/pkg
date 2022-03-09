@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-func typeFactory(t reflect.Type) TypeFunc {
+func TypeFactory(t reflect.Type) TypeFunc {
 	return func() interface{} {
 		return reflect.New(t).Interface()
 	}
 }
 
-func getElemType(source interface{}) reflect.Type {
+func GetElemType(source interface{}) reflect.Type {
 	rawType := reflect.TypeOf(source)
 	// source is a pointer, convert to its value
 	if rawType.Kind() == reflect.Ptr {
@@ -20,11 +20,11 @@ func getElemType(source interface{}) reflect.Type {
 	return rawType
 }
 
-func getShortName(rawType reflect.Type) string {
+func GetShortName(rawType reflect.Type) string {
 	parts := strings.Split(rawType.String(), ".")
 	return parts[1]
 }
 
 func GetTypeName(source interface{}) string {
-	return getShortName(getElemType(source))
+	return GetShortName(GetElemType(source))
 }

@@ -10,6 +10,10 @@ type DemoDescriptionAdded struct {
 }
 
 func init() {
-	types.Add(types.EntryFromType(&DemoCreated{}, true))
-	types.Add(types.EntryFromType(&DemoDescriptionAdded{}, true))
+	entries := []*types.Entry{
+		types.NewEntryFromObject(&DemoCreated{}),
+		types.NewEntryFromObject(&DemoDescriptionAdded{}),
+	}
+
+	types.Add(entries...)
 }
