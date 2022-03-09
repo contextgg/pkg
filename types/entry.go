@@ -6,8 +6,7 @@ import "reflect"
 type TypeFunc func() interface{}
 
 type Entry struct {
-	Name         string
-	Fullname     string
+	Names        []string
 	Type         reflect.Type
 	Factory      TypeFunc
 	InternalType bool

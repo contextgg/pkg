@@ -2,8 +2,8 @@ package types
 
 var g = NewRegistry()
 
-func Add(options ...TypeOption) (*Entry, error) {
-	return g.Add(options...)
+func Add(e *Entry) error {
+	return g.Add(e)
 }
 
 func GetByName(name string) (*Entry, bool) {

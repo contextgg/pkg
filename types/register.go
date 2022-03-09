@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -31,69 +30,27 @@ func condenseErrors(errs []error) error {
 }
 
 type Registry interface {
-	All() []*Entry
-	Add(options ...TypeOption) (*Entry, error)
-	GetFirstByNames(names []string) (*Entry, bool)
+	Add(*Entry) error
 	GetByName(name string) (*Entry, bool)
-	GetByType(t reflect.Type) (*Entry, bool)
 }
 
 type registry struct {
 	names map[string]*Entry
-	types map[reflect.Type]*Entry
 }
 
-func (r *registry) All() []*Entry {
-	var all []*Entry
-	for _, value := range r.names {
-		all = append(all, value)
-	}
-	return all
-}
-
-func (r *registry) Add(options ...TypeOption) (*Entry, error) {
-	opts := &Entry{}
-	for _, o := range options {
-		o(opts)
-	}
-
-	// validate!
-	var errors []error
-	if len(opts.Name) == 0 {
-		errors = append(errors, ErrInvalidName)
-	}
-	if len(opts.Fullname) == 0 {
-		errors = append(errors, ErrInvalidFullName)
-	}
-	if opts.Type == nil {
-		errors = append(errors, ErrInvalidType)
-	}
-	if len(errors) > 0 {
-		return nil, condenseErrors(errors)
-	}
-
-	// do we need a factory?
-	if opts.Factory == nil {
-		opts.Factory = typeFactory(opts.Type)
-	}
-
-	// do we already have one registered?
-	lower := strings.ToLower(opts.Name)
-	if _, ok := r.names[lower]; ok {
-		return nil, ErrAlreadyRegistered
-	}
-
-	r.names[lower] = opts
-	r.types[opts.Type] = opts
-	return opts, nil
-}
-func (r *registry) GetFirstByNames(names []string) (*Entry, bool) {
-	for _, name := range names {
-		if entry, ok := r.GetByName(name); ok {
-			return entry, true
+func (r *registry) Add(e *Entry) error {
+	// register all names.
+	for _, name := range e.Names {
+		// do we already have one registered?
+		lower := strings.ToLower(name)
+		if _, ok := r.names[lower]; ok {
+			return ErrAlreadyRegistered
 		}
+
+		r.names[lower] = e
 	}
-	return nil, false
+
+	return nil
 }
 func (r *registry) GetByName(name string) (*Entry, bool) {
 	parts := strings.Split(name, ".")
@@ -103,14 +60,9 @@ func (r *registry) GetByName(name string) (*Entry, bool) {
 	entry, ok := r.names[lower]
 	return entry, ok
 }
-func (r *registry) GetByType(t reflect.Type) (*Entry, bool) {
-	entry, ok := r.types[t]
-	return entry, ok
-}
 
 func NewRegistry() Registry {
 	return &registry{
 		names: make(map[string]*Entry),
-		types: make(map[reflect.Type]*Entry),
 	}
 }

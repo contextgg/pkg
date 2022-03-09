@@ -10,6 +10,6 @@ type DemoDescriptionAdded struct {
 }
 
 func init() {
-	types.Add(types.RegisterFromType(&DemoCreated{}), types.IsInternalType)
-	types.Add(types.RegisterFromType(&DemoDescriptionAdded{}), types.IsInternalType)
+	types.Add(types.EntryFromType(&DemoCreated{}, true))
+	types.Add(types.EntryFromType(&DemoDescriptionAdded{}, true))
 }

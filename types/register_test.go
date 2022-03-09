@@ -12,15 +12,14 @@ func Test_It(t *testing.T) {
 	}
 
 	reg := NewRegistry()
-	reg.Add(RegisterFromType(t1))
-	reg.Add(RegisterFromFactory(tf))
+	reg.Add(EntryFromType(t1, true))
+	reg.Add(EntryFromFactory(tf, true))
 
 	entry, ok := reg.GetByName("testit")
 	if !ok {
 		t.Error("Whoops")
 		return
 	}
-
 	if entry == nil {
 		t.Error("Whoops")
 	}

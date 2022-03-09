@@ -35,11 +35,13 @@ func (r *commandRegistry) SetHandler(handler CommandHandler, cmds ...Command) {
 	defer r.Unlock()
 
 	for _, cmd := range cmds {
-		entry, err := r.typesRegistry.Add(types.RegisterFromType(cmd))
-		if err != nil {
+		entry := types.EntryFromType(cmd, true)
+		if err := r.typesRegistry.Add(entry); err != nil {
 			panic(err)
 		}
-		r.handlers[entry.Name] = handler
+		for _, name := range entry.Names {
+			r.handlers[name] = handler
+		}
 	}
 }
 
@@ -62,7 +64,7 @@ func (r *commandRegistry) NewCommand(name string) (Command, error) {
 		names = append(names, name[:len(name)-7])
 	}
 
-	entry, ok := r.typesRegistry.GetFirstByNames(names)
+	entry, ok := types.GetFirstByNames(r.typesRegistry, names)
 	if !ok {
 		return nil, fmt.Errorf("Cannot find %s in registry", name)
 	}

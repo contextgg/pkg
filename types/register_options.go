@@ -1,30 +1,29 @@
 package types
 
-type TypeOption func(o *Entry)
-
-var IsInternalType = TypeOption(func(e *Entry) {
-	e.InternalType = true
-})
-var IsExternalType = TypeOption(func(e *Entry) {
-	e.InternalType = false
-})
-
-func RegisterFromType(obj interface{}) TypeOption {
+func EntryFromType(obj interface{}, internalType bool, names ...string) *Entry {
 	// get it!
 	t := getElemType(obj)
-	name := getShortName(t)
+	n := getShortName(t)
+	all := append([]string{n}, names...)
 
-	return func(e *Entry) {
-		e.Name = name
-		e.Fullname = t.String()
-		e.Type = t
+	return &Entry{
+		Names:        all,
+		Type:         t,
+		InternalType: internalType,
+		Factory:      typeFactory(t),
 	}
 }
 
-func RegisterFromFactory(factory TypeFunc) TypeOption {
-	opt := RegisterFromType(factory())
-	return func(e *Entry) {
-		opt(e)
-		e.Factory = factory
+func EntryFromFactory(factory TypeFunc, internalType bool, names ...string) *Entry {
+	obj := factory()
+	t := getElemType(obj)
+	n := getShortName(t)
+	all := append([]string{n}, names...)
+
+	return &Entry{
+		Names:        all,
+		Type:         t,
+		InternalType: internalType,
+		Factory:      factory,
 	}
 }
