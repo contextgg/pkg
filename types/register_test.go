@@ -9,7 +9,7 @@ func Test_It(t *testing.T) {
 	t1 := &testIt{}
 
 	reg := NewRegistry()
-	reg.Add(NewEntryFromObject(t1))
+	reg.Upsert(t1)
 
 	entry, ok := reg.GetByName("testit")
 	if !ok {

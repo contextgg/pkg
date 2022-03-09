@@ -35,13 +35,8 @@ func (r *commandRegistry) SetHandler(handler CommandHandler, cmds ...Command) {
 	defer r.Unlock()
 
 	for _, cmd := range cmds {
-		entry := types.NewEntryFromObject(cmd)
-		if err := r.typesRegistry.Add(entry); err != nil {
-			panic(err)
-		}
-		for _, name := range entry.Names {
-			r.handlers[name] = handler
-		}
+		entry := r.typesRegistry.Upsert(cmd)
+		r.handlers[entry.Name] = handler
 	}
 }
 

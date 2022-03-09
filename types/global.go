@@ -2,8 +2,8 @@ package types
 
 var g = NewRegistry()
 
-func Add(entries ...*Entry) error {
-	return g.Add(entries...)
+func Upsert(obj interface{}, replaced ...string) *Entry {
+	return g.Upsert(obj, replaced...)
 }
 
 func GetByName(name string) (*Entry, bool) {
