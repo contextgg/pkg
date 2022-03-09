@@ -2,7 +2,7 @@ package es
 
 import "github.com/contextgg/pkg/types"
 
-var publicEvents map[string]bool
+var publicEvents = map[string]bool{}
 
 func AddPublicEvent(obj interface{}) {
 	name := types.GetTypeName(obj)
