@@ -17,7 +17,7 @@ type Identity struct {
 // The user object
 type User struct {
 	// The token for the user
-	Token string `json:"token" validate:"required"`
+	Token *string `json:"token" validate:"required"`
 	// The id for the user
 	Id string `json:"id" validate:"required"`
 	// The connection for the user
