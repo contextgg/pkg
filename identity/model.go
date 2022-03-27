@@ -1,5 +1,12 @@
 package identity
 
+import "fmt"
+
+type SessionRequest struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
+
 type Identity struct {
 	UserId     string                 `json:"user_id" validate:"required"`
 	Username   string                 `json:"username" validate:"required"`
@@ -9,6 +16,8 @@ type Identity struct {
 
 // The user object
 type User struct {
+	// The token for the user
+	Token string `json:"token" validate:"required"`
 	// The id for the user
 	Id string `json:"id" validate:"required"`
 	// The connection for the user
@@ -33,4 +42,17 @@ type User struct {
 	Identities []Identity `json:"identities" validate:"required"`
 	// Who the user is authenticated for
 	Audience string `json:"audience" validate:"required"`
+}
+
+type ErrorMessage struct {
+	// Error code
+	Code int `json:"code"`
+
+	// Error message
+	Message string `json:"message"`
+}
+
+// Error makes it compatible with `error` interface.
+func (he *ErrorMessage) Error() string {
+	return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
 }
