@@ -12,8 +12,7 @@ func Middleware(fn Fetch) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			user, err := fn(r)
-			if err != nil {
+			if user, err := fn(r); err == nil {
 				ctx = SetUser(ctx, user)
 				ctx = ns.SetNamespace(ctx, user.Audience)
 			}
