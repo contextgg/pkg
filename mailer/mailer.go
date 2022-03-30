@@ -8,17 +8,19 @@ import (
 )
 
 type Mailer interface {
-	SendTemplate(toAddress string, toName string, templateId string, data map[string]interface{}) error
+	SendTemplate(fromName string, toAddress string, toName string, templateId string, data map[string]interface{}) error
 }
 
 type mailer struct {
-	cli  *sendgrid.Client
-	from *mail.Email
+	cli       *sendgrid.Client
+	fromEmail string
 }
 
-func (s *mailer) SendTemplate(toAddress string, toName string, templateId string, data map[string]interface{}) error {
+func (s *mailer) SendTemplate(fromName string, toAddress string, toName string, templateId string, data map[string]interface{}) error {
+	from := mail.NewEmail(fromName, s.fromEmail)
+
 	m := mail.NewV3Mail()
-	m.SetFrom(s.from)
+	m.SetFrom(from)
 	m.SetTemplateID(templateId)
 
 	p := mail.NewPersonalization()
@@ -42,8 +44,7 @@ func (s *mailer) SendTemplate(toAddress string, toName string, templateId string
 	return nil
 }
 
-func NewSendGrid(apiKey string, fromEmail string, fromName string) Mailer {
+func NewSendGrid(apiKey string, fromEmail string) Mailer {
 	cli := sendgrid.NewSendClient(apiKey)
-	from := mail.NewEmail(fromName, fromEmail)
-	return &mailer{cli, from}
+	return &mailer{cli, fromEmail}
 }
