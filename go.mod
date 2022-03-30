@@ -19,7 +19,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.0
-	github.com/sendgrid/sendgrid-go v3.10.5+incompatible
+	github.com/sendgrid/sendgrid-go v3.11.1+incompatible
 	github.com/slok/go-http-metrics v0.10.0
 	github.com/uptrace/bun v1.0.21
 	github.com/uptrace/bun/dialect/pgdialect v1.0.19
@@ -81,7 +81,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/sendgrid/rest v2.6.7+incompatible // indirect
+	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
