@@ -8,7 +8,7 @@ import (
 )
 
 type Mailer interface {
-	SendTemplate(toAddress string, toName string, subject string, templateId string, data map[string]interface{}) error
+	SendTemplate(toAddress string, toName string, templateId string, data map[string]interface{}) error
 }
 
 type mailer struct {
@@ -16,14 +16,17 @@ type mailer struct {
 	from *mail.Email
 }
 
-func (s *mailer) SendTemplate(toAddress string, toName string, subject string, templateId string, data map[string]interface{}) error {
-	to := mail.NewEmail(toName, toAddress)
-
-	m := mail.NewV3MailInit(s.from, subject, to)
+func (s *mailer) SendTemplate(toAddress string, toName string, templateId string, data map[string]interface{}) error {
+	m := mail.NewV3Mail()
 	m.SetFrom(s.from)
 	m.SetTemplateID(templateId)
 
 	p := mail.NewPersonalization()
+	tos := []*mail.Email{
+		mail.NewEmail(toName, toAddress),
+	}
+	p.AddTos(tos...)
+
 	for key, value := range data {
 		p.SetDynamicTemplateData(key, value)
 	}
