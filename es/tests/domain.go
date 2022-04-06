@@ -13,7 +13,7 @@ import (
 
 func NewBus(db *bun.DB, log logger.Logger) (es.CommandHandler, error) {
 	uniter := es.NewUniter(db)
-	eventBus := es.NewEventBus()
+	eventBus := es.NewEventBus(uniter)
 
 	entityRegistry := es.NewEntityRegistry()
 	entityRegistry.SetEntity(

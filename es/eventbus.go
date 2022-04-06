@@ -52,6 +52,7 @@ func (h EventHandlers) HandleEvent(ctx context.Context, evt events.Event) error 
 
 type eventBus struct {
 	handlers EventHandlers
+	uniter   Uniter
 }
 
 func (s *eventBus) AddHandler(handler EventHandler, matcher EventMatcher) {
@@ -60,14 +61,15 @@ func (s *eventBus) AddHandler(handler EventHandler, matcher EventMatcher) {
 }
 
 func (b *eventBus) HandleEvent(ctx context.Context, evt events.Event) error {
-	if err := b.handlers.HandleEvent(ctx, evt); err != nil {
-		return err
+	exec := func(ctx context.Context) error {
+		return b.handlers.HandleEvent(ctx, evt)
 	}
-
-	return nil
+	return b.uniter.Run(ctx, exec)
 }
 
 // NewEventBus to handle aggregates
-func NewEventBus() EventBus {
-	return &eventBus{}
+func NewEventBus(uniter Uniter) EventBus {
+	return &eventBus{
+		uniter: uniter,
+	}
 }
