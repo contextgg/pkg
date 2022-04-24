@@ -105,6 +105,13 @@ func (store *fileStorage) keyWithPrefix(ctx context.Context, key string) string 
 	if prefix != "" && !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
+
+	index := strings.Index(key, "/")
+	if index > 0 {
+		prefix += key[:index+1]
+		key = key[index+1:]
+	}
+
 	if len(key) > 1 {
 		prefix += key[0:2] + "/"
 	}
@@ -114,13 +121,14 @@ func (store *fileStorage) keyWithPrefix(ctx context.Context, key string) string 
 // New constructs a new GCS storage backend using the supplied GCS bucket name
 // and service object.
 func NewFileStorage(bucket string, projectId string, useNamespace bool, service GCSAPI) (storage.FileStorage, error) {
-	// todo create bucket?
-	ctx := context.Background()
-	if err := service.CreateBucket(ctx, GCSBucketParams{
-		Bucket:    bucket,
-		ProjectId: projectId,
-	}); err != nil {
-		return nil, err
+	if service != nil {
+		ctx := context.Background()
+		if err := service.CreateBucket(ctx, GCSBucketParams{
+			Bucket:    bucket,
+			ProjectId: projectId,
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	return &fileStorage{
