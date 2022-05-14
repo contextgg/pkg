@@ -32,6 +32,7 @@ func condenseErrors(errs []error) error {
 type Registry interface {
 	Upsert(obj interface{}, replaced ...string) *Entry
 	GetByName(name string) (*Entry, bool)
+	GetAll() []*Entry
 }
 
 type registry struct {
@@ -68,6 +69,14 @@ func (r *registry) GetByName(name string) (*Entry, bool) {
 
 	entry, ok := r.names[lower]
 	return entry, ok
+}
+
+func (r *registry) GetAll() []*Entry {
+	var out []*Entry
+	for _, e := range r.names {
+		out = append(out, e)
+	}
+	return out
 }
 
 func NewRegistry() Registry {
