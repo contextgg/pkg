@@ -9,3 +9,7 @@ func Upsert(obj interface{}, replaced ...string) *Entry {
 func GetByName(name string) (*Entry, bool) {
 	return g.GetByName(name)
 }
+
+func GetAll() []*Entry {
+	return g.GetAll()
+}
