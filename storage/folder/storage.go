@@ -23,9 +23,9 @@ type fileStorage struct {
 	useNamespace bool
 }
 
-func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int64, src io.Reader) (int64, error) {
-	key := fmt.Sprintf("%s_%d", id, offset)
-	p := store.keyWithPrefix(ctx, key)
+func (store *fileStorage) WriteChunk(ctx context.Context, key string, offset int64, src io.Reader) (int64, error) {
+	l := fmt.Sprintf("%s_%d", key, offset)
+	p := store.GetPath(ctx, l)
 
 	if err := os.MkdirAll(path.Dir(p), os.ModePerm); err != nil {
 		return 0, err
@@ -40,13 +40,13 @@ func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int6
 	n, err := io.Copy(file, src)
 	return n, err
 }
-func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadCloser, error) {
-	p := store.keyWithPrefix(ctx, id)
+func (store *fileStorage) GetReader(ctx context.Context, key string) (io.ReadCloser, error) {
+	p := store.GetPath(ctx, key)
 	return os.Open(p)
 }
-func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
+func (store *fileStorage) GetMetadata(ctx context.Context, key string) (map[string]string, error) {
 	meta := map[string]string{}
-	p := store.keyWithPrefix(ctx, id) + ".meta"
+	p := store.GetPath(ctx, key) + ".meta"
 
 	f, err := os.OpenFile(p, os.O_RDONLY, defaultFilePerm)
 	if os.IsNotExist(err) {
@@ -62,8 +62,8 @@ func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[strin
 	}
 	return meta, nil
 }
-func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata map[string]string) error {
-	p := store.keyWithPrefix(ctx, id)
+func (store *fileStorage) FinishUpload(ctx context.Context, key string, metadata map[string]string) error {
+	p := store.GetPath(ctx, key)
 	prefix := fmt.Sprintf("%s_", p)
 	var chunks []string
 
@@ -110,7 +110,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 
 	// save metadata!
 	if metadata != nil {
-		metafilename := store.keyWithPrefix(ctx, id) + ".meta"
+		metafilename := store.GetPath(ctx, key) + ".meta"
 
 		// try truncate!
 		if err := os.Truncate(metafilename, 0); err != nil && !os.IsNotExist(err) {
@@ -129,7 +129,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 	}
 	return nil
 }
-func (store *fileStorage) keyWithPrefix(ctx context.Context, key string) string {
+func (store *fileStorage) GetPath(ctx context.Context, key string) string {
 	if store.useNamespace {
 		namespace := ns.FromContext(ctx)
 		return path.Join(store.abs, namespace, key)

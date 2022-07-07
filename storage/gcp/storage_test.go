@@ -28,7 +28,7 @@ func TestIt(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.id, func(t *testing.T) {
 			ctx := context.Background()
-			out := s.keyWithPrefix(ctx, d.id)
+			out := s.GetPath(ctx, d.id)
 			if out != d.out {
 				t.Errorf("Expected %s, got %s", d.out, out)
 			}

@@ -18,8 +18,8 @@ type fileStorage struct {
 	service      GCSAPI
 }
 
-func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int64, src io.Reader) (int64, error) {
-	cid := fmt.Sprintf("%s_%d", store.keyWithPrefix(ctx, id), offset)
+func (store *fileStorage) WriteChunk(ctx context.Context, key string, offset int64, src io.Reader) (int64, error) {
+	cid := fmt.Sprintf("%s_%d", store.GetPath(ctx, key), offset)
 	objectParams := GCSObjectParams{
 		Bucket: store.bucket,
 		ID:     cid,
@@ -33,10 +33,10 @@ func (store *fileStorage) WriteChunk(ctx context.Context, id string, offset int6
 	return n, err
 }
 
-func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadCloser, error) {
+func (store *fileStorage) GetReader(ctx context.Context, key string) (io.ReadCloser, error) {
 	params := GCSObjectParams{
 		Bucket: store.bucket,
-		ID:     store.keyWithPrefix(ctx, id),
+		ID:     store.GetPath(ctx, key),
 	}
 
 	r, err := store.service.ReadObject(ctx, params)
@@ -47,17 +47,18 @@ func (store *fileStorage) GetReader(ctx context.Context, id string) (io.ReadClos
 	return r, nil
 }
 
-func (store *fileStorage) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
+func (store *fileStorage) GetMetadata(ctx context.Context, key string) (map[string]string, error) {
 	params := GCSObjectParams{
 		Bucket: store.bucket,
-		ID:     store.keyWithPrefix(ctx, id),
+		ID:     store.GetPath(ctx, key),
 	}
 
 	return store.service.GetObjectMetadata(ctx, params)
 }
 
-func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata map[string]string) error {
-	prefix := fmt.Sprintf("%s_", store.keyWithPrefix(ctx, id))
+func (store *fileStorage) FinishUpload(ctx context.Context, key string, metadata map[string]string) error {
+	p := store.GetPath(ctx, key)
+	prefix := fmt.Sprintf("%s_", p)
 	filterParams := GCSFilterParams{
 		Bucket: store.bucket,
 		Prefix: prefix,
@@ -70,7 +71,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 
 	composeParams := GCSComposeParams{
 		Bucket:      store.bucket,
-		Destination: store.keyWithPrefix(ctx, id),
+		Destination: p,
 		Sources:     names,
 	}
 
@@ -86,7 +87,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 
 	objectParams := GCSObjectParams{
 		Bucket: store.bucket,
-		ID:     store.keyWithPrefix(ctx, id),
+		ID:     p,
 	}
 
 	err = store.service.SetObjectMetadata(ctx, objectParams, metadata)
@@ -97,7 +98,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, id string, metadata 
 	return nil
 }
 
-func (store *fileStorage) keyWithPrefix(ctx context.Context, key string) string {
+func (store *fileStorage) GetPath(ctx context.Context, key string) string {
 	var prefix string
 	if store.useNamespace {
 		prefix = ns.FromContext(ctx)

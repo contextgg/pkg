@@ -19,7 +19,7 @@ func NewMiddleware(l logger.Logger) es.CommandHandlerMiddleware {
 			duration := time.Since(start)
 
 			if err != nil {
-				l.Error("Command failed", "err", err, "cmd", name, "start", start, "duration", duration)
+				l.Error("Command failed", "err", err, "id", cmd.GetAggregateId(), "cmd", name, "start", start, "duration", duration)
 				return err
 			}
 
