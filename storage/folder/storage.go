@@ -115,6 +115,7 @@ func (store *fileStorage) FinishUpload(ctx context.Context, key string, metadata
 	// save metadata!
 	if metadata != nil {
 		metafilename := store.GetPath(ctx, key) + ".meta"
+		metafilename = path.Join(store.abs, metafilename)
 
 		// try truncate!
 		if err := os.Truncate(metafilename, 0); err != nil && !os.IsNotExist(err) {
