@@ -26,6 +26,7 @@ type fileStorage struct {
 func (store *fileStorage) WriteChunk(ctx context.Context, key string, offset int64, src io.Reader) (int64, error) {
 	l := fmt.Sprintf("%s_%d", key, offset)
 	p := store.GetPath(ctx, l)
+	p = path.Join(store.abs, p)
 
 	if err := os.MkdirAll(path.Dir(p), os.ModePerm); err != nil {
 		return 0, err
@@ -42,11 +43,13 @@ func (store *fileStorage) WriteChunk(ctx context.Context, key string, offset int
 }
 func (store *fileStorage) GetReader(ctx context.Context, key string) (io.ReadCloser, error) {
 	p := store.GetPath(ctx, key)
+	p = path.Join(store.abs, p)
 	return os.Open(p)
 }
 func (store *fileStorage) GetMetadata(ctx context.Context, key string) (map[string]string, error) {
 	meta := map[string]string{}
 	p := store.GetPath(ctx, key) + ".meta"
+	p = path.Join(store.abs, p)
 
 	f, err := os.OpenFile(p, os.O_RDONLY, defaultFilePerm)
 	if os.IsNotExist(err) {
@@ -64,6 +67,7 @@ func (store *fileStorage) GetMetadata(ctx context.Context, key string) (map[stri
 }
 func (store *fileStorage) FinishUpload(ctx context.Context, key string, metadata map[string]string) error {
 	p := store.GetPath(ctx, key)
+	p = path.Join(store.abs, p)
 	prefix := fmt.Sprintf("%s_", p)
 	var chunks []string
 
@@ -132,10 +136,10 @@ func (store *fileStorage) FinishUpload(ctx context.Context, key string, metadata
 func (store *fileStorage) GetPath(ctx context.Context, key string) string {
 	if store.useNamespace {
 		namespace := ns.FromContext(ctx)
-		return path.Join(store.abs, namespace, key)
+		return path.Join(namespace, key)
 	}
 
-	return path.Join(store.abs, key)
+	return key
 }
 
 func NewFileStorage(p string, useNamespace bool, remake bool) (storage.FileStorage, error) {
