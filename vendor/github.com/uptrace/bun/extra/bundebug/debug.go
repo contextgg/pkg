@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"time"
@@ -30,7 +31,15 @@ func WithVerbose(on bool) Option {
 	}
 }
 
-// WithEnv configures the hook using the environment variable value.
+// WithWriter sets the log output to an io.Writer
+// the default is os.Stderr
+func WithWriter(w io.Writer) Option {
+	return func(h *QueryHook) {
+		h.writer = w
+	}
+}
+
+// FromEnv configures the hook using the environment variable value.
 // For example, WithEnv("BUNDEBUG"):
 //    - BUNDEBUG=0 - disables the hook.
 //    - BUNDEBUG=1 - enables the hook.
@@ -50,6 +59,7 @@ func FromEnv(key string) Option {
 type QueryHook struct {
 	enabled bool
 	verbose bool
+	writer  io.Writer
 }
 
 var _ bun.QueryHook = (*QueryHook)(nil)
@@ -57,6 +67,7 @@ var _ bun.QueryHook = (*QueryHook)(nil)
 func NewQueryHook(opts ...Option) *QueryHook {
 	h := &QueryHook{
 		enabled: true,
+		writer:  os.Stderr,
 	}
 	for _, opt := range opts {
 		opt(h)
@@ -101,7 +112,7 @@ func (h *QueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 		)
 	}
 
-	fmt.Println(args...)
+	fmt.Fprintln(h.writer, args...)
 }
 
 func formatOperation(event *bun.QueryEvent) string {

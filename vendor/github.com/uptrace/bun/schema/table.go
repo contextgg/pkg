@@ -204,30 +204,6 @@ func (t *Table) initFields() {
 	t.Fields = make([]*Field, 0, t.Type.NumField())
 	t.FieldMap = make(map[string]*Field, t.Type.NumField())
 	t.addFields(t.Type, "", nil)
-
-	if len(t.PKs) == 0 {
-		for _, name := range []string{"id", "uuid", "pk_" + t.ModelName} {
-			if field, ok := t.FieldMap[name]; ok {
-				field.markAsPK()
-				t.PKs = []*Field{field}
-				t.DataFields = removeField(t.DataFields, field)
-				break
-			}
-		}
-	}
-
-	if len(t.PKs) == 1 {
-		pk := t.PKs[0]
-		if pk.SQLDefault != "" {
-			return
-		}
-
-		switch pk.IndirectType.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			pk.AutoIncrement = true
-		}
-	}
 }
 
 func (t *Table) addFields(typ reflect.Type, prefix string, index []int) {
@@ -256,7 +232,7 @@ func (t *Table) addFields(typ reflect.Type, prefix string, index []int) {
 				t.addFields(fieldType, "", withIndex(index, f.Index))
 
 				tag := tagparser.Parse(f.Tag.Get("bun"))
-				if _, inherit := tag.Options["inherit"]; inherit {
+				if tag.HasOption("inherit") || tag.HasOption("extend") {
 					embeddedTable := t.dialect.Tables().Ref(fieldType)
 					t.TypeName = embeddedTable.TypeName
 					t.SQLName = embeddedTable.SQLName
@@ -356,6 +332,7 @@ func (t *Table) newField(f reflect.StructField, prefix string, index []int) *Fie
 
 	field := &Field{
 		StructField: f,
+		IsPtr:       f.Type.Kind() == reflect.Ptr,
 
 		Tag:          tag,
 		IndirectType: indirectType(f.Type),
@@ -368,9 +345,16 @@ func (t *Table) newField(f reflect.StructField, prefix string, index []int) *Fie
 
 	field.NotNull = tag.HasOption("notnull")
 	field.NullZero = tag.HasOption("nullzero")
-	field.AutoIncrement = tag.HasOption("autoincrement")
 	if tag.HasOption("pk") {
-		field.markAsPK()
+		field.IsPK = true
+		field.NotNull = true
+	}
+	if tag.HasOption("autoincrement") {
+		field.AutoIncrement = true
+		field.NullZero = true
+	}
+	if tag.HasOption("identity") {
+		field.Identity = true
 	}
 
 	if v, ok := tag.Options["unique"]; ok {
@@ -393,6 +377,7 @@ func (t *Table) newField(f reflect.StructField, prefix string, index []int) *Fie
 	}
 	if s, ok := tag.Option("default"); ok {
 		field.SQLDefault = s
+		field.NullZero = true
 	}
 	if s, ok := field.Tag.Option("type"); ok {
 		field.UserSQLType = s
@@ -416,20 +401,8 @@ func (t *Table) newField(f reflect.StructField, prefix string, index []int) *Fie
 	}
 
 	if _, ok := tag.Options["soft_delete"]; ok {
-		field.NullZero = true
 		t.SoftDeleteField = field
 		t.UpdateSoftDeleteField = softDeleteFieldUpdater(field)
-	}
-
-	// Check this in the end to undo NullZero.
-	if tag.HasOption("allowzero") {
-		if tag.HasOption("nullzero") {
-			internal.Warn.Printf(
-				"%s.%s: nullzero and allowzero options are mutually exclusive",
-				t.TypeName, f.Name,
-			)
-		}
-		field.NullZero = false
 	}
 
 	return field
@@ -509,6 +482,39 @@ func (t *Table) belongsToRelation(field *Field) *Relation {
 		JoinTable: joinTable,
 	}
 
+	if field.Tag.HasOption("join_on") {
+		rel.Condition = field.Tag.Options["join_on"]
+	}
+
+	rel.OnUpdate = "ON UPDATE NO ACTION"
+	if onUpdate, ok := field.Tag.Options["on_update"]; ok {
+		if len(onUpdate) > 1 {
+			panic(fmt.Errorf("bun: %s belongs-to %s: on_update option must be a single field", t.TypeName, field.GoName))
+		}
+
+		rule := strings.ToUpper(onUpdate[0])
+		if !isKnownFKRule(rule) {
+			internal.Warn.Printf("bun: %s belongs-to %s: unknown on_update rule %s", t.TypeName, field.GoName, rule)
+		}
+
+		s := fmt.Sprintf("ON UPDATE %s", rule)
+		rel.OnUpdate = s
+	}
+
+	rel.OnDelete = "ON DELETE NO ACTION"
+	if onDelete, ok := field.Tag.Options["on_delete"]; ok {
+		if len(onDelete) > 1 {
+			panic(fmt.Errorf("bun: %s belongs-to %s: on_delete option must be a single field", t.TypeName, field.GoName))
+		}
+
+		rule := strings.ToUpper(onDelete[0])
+		if !isKnownFKRule(rule) {
+			internal.Warn.Printf("bun: %s belongs-to %s: unknown on_delete rule %s", t.TypeName, field.GoName, rule)
+		}
+		s := fmt.Sprintf("ON DELETE %s", rule)
+		rel.OnDelete = s
+	}
+
 	if join, ok := field.Tag.Options["join"]; ok {
 		baseColumns, joinColumns := parseRelationJoin(join)
 		for i, baseColumn := range baseColumns {
@@ -568,6 +574,10 @@ func (t *Table) hasOneRelation(field *Field) *Relation {
 		Type:      BelongsToRelation,
 		Field:     field,
 		JoinTable: joinTable,
+	}
+
+	if field.Tag.HasOption("join_on") {
+		rel.Condition = field.Tag.Options["join_on"]
 	}
 
 	if join, ok := field.Tag.Options["join"]; ok {
@@ -636,6 +646,11 @@ func (t *Table) hasManyRelation(field *Field) *Relation {
 		Field:     field,
 		JoinTable: joinTable,
 	}
+
+	if field.Tag.HasOption("join_on") {
+		rel.Condition = field.Tag.Options["join_on"]
+	}
+
 	var polymorphicColumn string
 
 	if join, ok := field.Tag.Options["join"]; ok {
@@ -652,7 +667,7 @@ func (t *Table) hasManyRelation(field *Field) *Relation {
 				rel.BaseFields = append(rel.BaseFields, f)
 			} else {
 				panic(fmt.Errorf(
-					"bun: %s has-one %s: %s must have column %s",
+					"bun: %s has-many %s: %s must have column %s",
 					t.TypeName, field.GoName, t.TypeName, baseColumn,
 				))
 			}
@@ -661,7 +676,7 @@ func (t *Table) hasManyRelation(field *Field) *Relation {
 				rel.JoinFields = append(rel.JoinFields, f)
 			} else {
 				panic(fmt.Errorf(
-					"bun: %s has-one %s: %s must have column %s",
+					"bun: %s has-many %s: %s must have column %s",
 					t.TypeName, field.GoName, t.TypeName, baseColumn,
 				))
 			}
@@ -746,6 +761,11 @@ func (t *Table) m2mRelation(field *Field) *Relation {
 		JoinTable: joinTable,
 		M2MTable:  m2mTable,
 	}
+
+	if field.Tag.HasOption("join_on") {
+		rel.Condition = field.Tag.Options["join_on"]
+	}
+
 	var leftColumn, rightColumn string
 
 	if join, ok := field.Tag.Options["join"]; ok {
@@ -880,18 +900,33 @@ func isKnownFieldOption(name string) bool {
 		"msgpack",
 		"notnull",
 		"nullzero",
-		"allowzero",
 		"default",
 		"unique",
 		"soft_delete",
 		"scanonly",
+		"skipupdate",
 
 		"pk",
 		"autoincrement",
 		"rel",
 		"join",
+		"join_on",
+		"on_update",
+		"on_delete",
 		"m2m",
-		"polymorphic":
+		"polymorphic",
+		"identity":
+		return true
+	}
+	return false
+}
+
+func isKnownFKRule(name string) bool {
+	switch name {
+	case "CASCADE",
+		"RESTRICT",
+		"SET NULL",
+		"SET DEFAULT":
 		return true
 	}
 	return false

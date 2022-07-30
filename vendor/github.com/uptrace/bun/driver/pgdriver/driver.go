@@ -162,6 +162,7 @@ func (cn *Conn) write(ctx context.Context, wb *writeBuffer) error {
 
 	if err != nil {
 		if n == 0 {
+			Logger.Printf(ctx, "pgdriver: Conn.Write failed (zero-length): %s", err)
 			return driver.ErrBadConn
 		}
 		return err

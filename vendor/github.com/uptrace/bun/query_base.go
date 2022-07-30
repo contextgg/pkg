@@ -57,12 +57,33 @@ type IDB interface {
 	NewTruncateTable() *TruncateTableQuery
 	NewAddColumn() *AddColumnQuery
 	NewDropColumn() *DropColumnQuery
+
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error)
+	RunInTx(ctx context.Context, opts *sql.TxOptions, f func(ctx context.Context, tx Tx) error) error
 }
 
 var (
 	_ IDB = (*DB)(nil)
 	_ IDB = (*Conn)(nil)
 	_ IDB = (*Tx)(nil)
+)
+
+// QueryBuilder is used for common query methods
+type QueryBuilder interface {
+	Query
+	Where(query string, args ...interface{}) QueryBuilder
+	WhereGroup(sep string, fn func(QueryBuilder) QueryBuilder) QueryBuilder
+	WhereOr(query string, args ...interface{}) QueryBuilder
+	WhereDeleted() QueryBuilder
+	WhereAllWithDeleted() QueryBuilder
+	WherePK(cols ...string) QueryBuilder
+	Unwrap() interface{}
+}
+
+var (
+	_ QueryBuilder = (*selectQueryBuilder)(nil)
+	_ QueryBuilder = (*updateQueryBuilder)(nil)
+	_ QueryBuilder = (*deleteQueryBuilder)(nil)
 )
 
 type baseQuery struct {
@@ -174,6 +195,10 @@ func (q *baseQuery) beforeAppendModel(ctx context.Context, query Query) error {
 	return nil
 }
 
+func (q *baseQuery) hasFeature(feature feature.Feature) bool {
+	return q.db.features.Has(feature)
+}
+
 //------------------------------------------------------------------------------
 
 func (q *baseQuery) checkSoftDelete() error {
@@ -205,13 +230,14 @@ func (q *baseQuery) whereAllWithDeleted() {
 		q.setErr(err)
 		return
 	}
-	q.flags = q.flags.Set(allWithDeletedFlag)
-	q.flags = q.flags.Remove(deletedFlag)
+	q.flags = q.flags.Set(allWithDeletedFlag).Remove(deletedFlag)
 }
 
 func (q *baseQuery) isSoftDelete() bool {
 	if q.table != nil {
-		return q.table.SoftDeleteField != nil && !q.flags.Has(allWithDeletedFlag)
+		return q.table.SoftDeleteField != nil &&
+			!q.flags.Has(allWithDeletedFlag) &&
+			!q.flags.Has(forceDeleteFlag)
 	}
 	return false
 }
@@ -236,26 +262,68 @@ func (q *baseQuery) appendWith(fmter schema.Formatter, b []byte) (_ []byte, err 
 			b = append(b, ", "...)
 		}
 
-		b = fmter.AppendIdent(b, with.name)
-		if q, ok := with.query.(schema.ColumnsAppender); ok {
-			b = append(b, " ("...)
-			b, err = q.AppendColumns(fmter, b)
-			if err != nil {
-				return nil, err
-			}
-			b = append(b, ")"...)
-		}
-
-		b = append(b, " AS ("...)
-
-		b, err = with.query.AppendQuery(fmter, b)
+		b, err = q.appendCTE(fmter, b, with)
 		if err != nil {
 			return nil, err
 		}
-
-		b = append(b, ')')
 	}
 	b = append(b, ' ')
+	return b, nil
+}
+
+func (q *baseQuery) appendCTE(
+	fmter schema.Formatter, b []byte, cte withQuery,
+) (_ []byte, err error) {
+	if !fmter.Dialect().Features().Has(feature.WithValues) {
+		if values, ok := cte.query.(*ValuesQuery); ok {
+			return q.appendSelectFromValues(fmter, b, cte, values)
+		}
+	}
+
+	b = fmter.AppendIdent(b, cte.name)
+
+	if q, ok := cte.query.(schema.ColumnsAppender); ok {
+		b = append(b, " ("...)
+		b, err = q.AppendColumns(fmter, b)
+		if err != nil {
+			return nil, err
+		}
+		b = append(b, ")"...)
+	}
+
+	b = append(b, " AS ("...)
+
+	b, err = cte.query.AppendQuery(fmter, b)
+	if err != nil {
+		return nil, err
+	}
+
+	b = append(b, ")"...)
+	return b, nil
+}
+
+func (q *baseQuery) appendSelectFromValues(
+	fmter schema.Formatter, b []byte, cte withQuery, values *ValuesQuery,
+) (_ []byte, err error) {
+	b = fmter.AppendIdent(b, cte.name)
+	b = append(b, " AS (SELECT * FROM ("...)
+
+	b, err = cte.query.AppendQuery(fmter, b)
+	if err != nil {
+		return nil, err
+	}
+
+	b = append(b, ") AS t"...)
+	if q, ok := cte.query.(schema.ColumnsAppender); ok {
+		b = append(b, " ("...)
+		b, err = q.AppendColumns(fmter, b)
+		if err != nil {
+			return nil, err
+		}
+		b = append(b, ")"...)
+	}
+	b = append(b, ")"...)
+
 	return b, nil
 }
 
@@ -436,6 +504,9 @@ func (q *baseQuery) appendColumns(fmter schema.Formatter, b []byte) (_ []byte, e
 
 func (q *baseQuery) getFields() ([]*schema.Field, error) {
 	if len(q.columns) == 0 {
+		if q.table == nil {
+			return nil, errNilModel
+		}
 		return q.table.Fields, nil
 	}
 	return q._getFields(false)
@@ -443,6 +514,9 @@ func (q *baseQuery) getFields() ([]*schema.Field, error) {
 
 func (q *baseQuery) getDataFields() ([]*schema.Field, error) {
 	if len(q.columns) == 0 {
+		if q.table == nil {
+			return nil, errNilModel
+		}
 		return q.table.DataFields, nil
 	}
 	return q._getFields(true)
@@ -717,15 +791,18 @@ func (q *whereBaseQuery) appendWhere(
 		if len(b) > startLen {
 			b = append(b, " AND "...)
 		}
+
 		if withAlias {
 			b = append(b, q.tableModel.Table().SQLAlias...)
-			b = append(b, '.')
+		} else {
+			b = append(b, q.tableModel.Table().SQLName...)
 		}
+		b = append(b, '.')
 
 		field := q.tableModel.Table().SoftDeleteField
 		b = append(b, field.SQLName...)
 
-		if field.NullZero {
+		if field.IsPtr || field.NullZero {
 			if q.flags.Has(deletedFlag) {
 				b = append(b, " IS NOT NULL"...)
 			} else {
@@ -907,27 +984,21 @@ func (q *returningQuery) addReturningField(field *schema.Field) {
 	q.returningFields = append(q.returningFields, field)
 }
 
-func (q *returningQuery) hasReturning() bool {
-	if len(q.returning) == 1 {
-		if ret := q.returning[0]; len(ret.Args) == 0 {
-			switch ret.Query {
-			case "", "null", "NULL":
-				return false
-			}
-		}
-	}
-	return len(q.returning) > 0 || len(q.returningFields) > 0
-}
-
 func (q *returningQuery) appendReturning(
 	fmter schema.Formatter, b []byte,
 ) (_ []byte, err error) {
-	if !q.hasReturning() {
-		return b, nil
-	}
+	return q._appendReturning(fmter, b, "")
+}
 
-	b = append(b, " RETURNING "...)
+func (q *returningQuery) appendOutput(
+	fmter schema.Formatter, b []byte,
+) (_ []byte, err error) {
+	return q._appendReturning(fmter, b, "INSERTED")
+}
 
+func (q *returningQuery) _appendReturning(
+	fmter schema.Formatter, b []byte, table string,
+) (_ []byte, err error) {
 	for i, f := range q.returning {
 		if i > 0 {
 			b = append(b, ", "...)
@@ -942,8 +1013,20 @@ func (q *returningQuery) appendReturning(
 		return b, nil
 	}
 
-	b = appendColumns(b, "", q.returningFields)
+	b = appendColumns(b, schema.Safe(table), q.returningFields)
 	return b, nil
+}
+
+func (q *returningQuery) hasReturning() bool {
+	if len(q.returning) == 1 {
+		if ret := q.returning[0]; len(ret.Args) == 0 {
+			switch ret.Query {
+			case "", "null", "NULL":
+				return false
+			}
+		}
+	}
+	return len(q.returning) > 0 || len(q.returningFields) > 0
 }
 
 //------------------------------------------------------------------------------
@@ -1015,4 +1098,236 @@ func (q cascadeQuery) appendCascade(fmter schema.Formatter, b []byte) []byte {
 		b = append(b, " RESTRICT"...)
 	}
 	return b
+}
+
+//------------------------------------------------------------------------------
+
+type idxHintsQuery struct {
+	use    *indexHints
+	ignore *indexHints
+	force  *indexHints
+}
+
+type indexHints struct {
+	names      []schema.QueryWithArgs
+	forJoin    []schema.QueryWithArgs
+	forOrderBy []schema.QueryWithArgs
+	forGroupBy []schema.QueryWithArgs
+}
+
+func (ih *idxHintsQuery) lazyUse() *indexHints {
+	if ih.use == nil {
+		ih.use = new(indexHints)
+	}
+	return ih.use
+}
+
+func (ih *idxHintsQuery) lazyIgnore() *indexHints {
+	if ih.ignore == nil {
+		ih.ignore = new(indexHints)
+	}
+	return ih.ignore
+}
+
+func (ih *idxHintsQuery) lazyForce() *indexHints {
+	if ih.force == nil {
+		ih.force = new(indexHints)
+	}
+	return ih.force
+}
+
+func (ih *idxHintsQuery) appendIndexes(hints []schema.QueryWithArgs, indexes ...string) []schema.QueryWithArgs {
+	for _, idx := range indexes {
+		hints = append(hints, schema.UnsafeIdent(idx))
+	}
+	return hints
+}
+
+func (ih *idxHintsQuery) addUseIndex(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyUse().names = ih.appendIndexes(ih.use.names, indexes...)
+}
+
+func (ih *idxHintsQuery) addUseIndexForJoin(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyUse().forJoin = ih.appendIndexes(ih.use.forJoin, indexes...)
+}
+
+func (ih *idxHintsQuery) addUseIndexForOrderBy(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyUse().forOrderBy = ih.appendIndexes(ih.use.forOrderBy, indexes...)
+}
+
+func (ih *idxHintsQuery) addUseIndexForGroupBy(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyUse().forGroupBy = ih.appendIndexes(ih.use.forGroupBy, indexes...)
+}
+
+func (ih *idxHintsQuery) addIgnoreIndex(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyIgnore().names = ih.appendIndexes(ih.ignore.names, indexes...)
+}
+
+func (ih *idxHintsQuery) addIgnoreIndexForJoin(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyIgnore().forJoin = ih.appendIndexes(ih.ignore.forJoin, indexes...)
+}
+
+func (ih *idxHintsQuery) addIgnoreIndexForOrderBy(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyIgnore().forOrderBy = ih.appendIndexes(ih.ignore.forOrderBy, indexes...)
+}
+
+func (ih *idxHintsQuery) addIgnoreIndexForGroupBy(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyIgnore().forGroupBy = ih.appendIndexes(ih.ignore.forGroupBy, indexes...)
+}
+
+func (ih *idxHintsQuery) addForceIndex(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyForce().names = ih.appendIndexes(ih.force.names, indexes...)
+}
+
+func (ih *idxHintsQuery) addForceIndexForJoin(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyForce().forJoin = ih.appendIndexes(ih.force.forJoin, indexes...)
+}
+
+func (ih *idxHintsQuery) addForceIndexForOrderBy(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyForce().forOrderBy = ih.appendIndexes(ih.force.forOrderBy, indexes...)
+}
+
+func (ih *idxHintsQuery) addForceIndexForGroupBy(indexes ...string) {
+	if len(indexes) == 0 {
+		return
+	}
+	ih.lazyForce().forGroupBy = ih.appendIndexes(ih.force.forGroupBy, indexes...)
+}
+
+func (ih *idxHintsQuery) appendIndexHints(
+	fmter schema.Formatter, b []byte,
+) ([]byte, error) {
+	type IdxHint struct {
+		Name   string
+		Values []schema.QueryWithArgs
+	}
+
+	var hints []IdxHint
+	if ih.use != nil {
+		hints = append(hints, []IdxHint{
+			{
+				Name:   "USE INDEX",
+				Values: ih.use.names,
+			},
+			{
+				Name:   "USE INDEX FOR JOIN",
+				Values: ih.use.forJoin,
+			},
+			{
+				Name:   "USE INDEX FOR ORDER BY",
+				Values: ih.use.forOrderBy,
+			},
+			{
+				Name:   "USE INDEX FOR GROUP BY",
+				Values: ih.use.forGroupBy,
+			},
+		}...)
+	}
+
+	if ih.ignore != nil {
+		hints = append(hints, []IdxHint{
+			{
+				Name:   "IGNORE INDEX",
+				Values: ih.ignore.names,
+			},
+			{
+				Name:   "IGNORE INDEX FOR JOIN",
+				Values: ih.ignore.forJoin,
+			},
+			{
+				Name:   "IGNORE INDEX FOR ORDER BY",
+				Values: ih.ignore.forOrderBy,
+			},
+			{
+				Name:   "IGNORE INDEX FOR GROUP BY",
+				Values: ih.ignore.forGroupBy,
+			},
+		}...)
+	}
+
+	if ih.force != nil {
+		hints = append(hints, []IdxHint{
+			{
+				Name:   "FORCE INDEX",
+				Values: ih.force.names,
+			},
+			{
+				Name:   "FORCE INDEX FOR JOIN",
+				Values: ih.force.forJoin,
+			},
+			{
+				Name:   "FORCE INDEX FOR ORDER BY",
+				Values: ih.force.forOrderBy,
+			},
+			{
+				Name:   "FORCE INDEX FOR GROUP BY",
+				Values: ih.force.forGroupBy,
+			},
+		}...)
+	}
+
+	var err error
+	for _, h := range hints {
+		b, err = ih.bufIndexHint(h.Name, h.Values, fmter, b)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return b, nil
+}
+
+func (ih *idxHintsQuery) bufIndexHint(
+	name string,
+	hints []schema.QueryWithArgs,
+	fmter schema.Formatter, b []byte,
+) ([]byte, error) {
+	var err error
+	if len(hints) == 0 {
+		return b, nil
+	}
+	b = append(b, fmt.Sprintf(" %s (", name)...)
+	for i, f := range hints {
+		if i > 0 {
+			b = append(b, ", "...)
+		}
+		b, err = f.AppendQuery(fmter, b)
+		if err != nil {
+			return nil, err
+		}
+	}
+	b = append(b, ")"...)
+	return b, nil
 }

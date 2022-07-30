@@ -1,6 +1,6 @@
 module github.com/contextgg/pkg
 
-go 1.17
+go 1.18
 
 require (
 	cloud.google.com/go/pubsub v1.17.1
@@ -12,7 +12,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
-	github.com/mitchellh/mapstructure v1.4.3
 	github.com/nats-io/nats.go v1.13.1-0.20211122170419-d7c1d78a50fc
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/ory/hydra-client-go v1.10.6
@@ -21,10 +20,10 @@ require (
 	github.com/prometheus/client_golang v1.12.0
 	github.com/sendgrid/sendgrid-go v3.11.1+incompatible
 	github.com/slok/go-http-metrics v0.10.0
-	github.com/uptrace/bun v1.0.21
-	github.com/uptrace/bun/dialect/pgdialect v1.0.19
-	github.com/uptrace/bun/driver/pgdriver v1.0.19
-	github.com/uptrace/bun/extra/bundebug v1.0.19
+	github.com/uptrace/bun v1.1.7
+	github.com/uptrace/bun/dialect/pgdialect v1.1.7
+	github.com/uptrace/bun/driver/pgdriver v1.1.7
+	github.com/uptrace/bun/extra/bundebug v1.1.7
 	github.com/vimeo/go-util v1.4.1
 	go.uber.org/zap v1.20.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -72,6 +71,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nats-io/nats-server/v2 v2.6.6 // indirect
@@ -90,10 +90,10 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/net v0.0.0-20220121210141-e204ce36a2ba // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

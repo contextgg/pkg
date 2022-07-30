@@ -1,25 +1,23 @@
-<p align="center">
-  <a href="https://github.com/uptrace/uptrace">
-    <img src="https://raw.githubusercontent.com/uptrace/roadmap/master/banner1.png" alt="All-in-one tool to optimize performance and monitor errors & logs">
-  </a>
-</p>
-
-# Simple and performant client for PostgreSQL, MySQL, and SQLite
+# SQL-first Golang ORM for PostgreSQL, MySQL, MSSQL, and SQLite
 
 [![build workflow](https://github.com/uptrace/bun/actions/workflows/build.yml/badge.svg)](https://github.com/uptrace/bun/actions)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/uptrace/bun)](https://pkg.go.dev/github.com/uptrace/bun)
 [![Documentation](https://img.shields.io/badge/bun-documentation-informational)](https://bun.uptrace.dev/)
+[![Chat](https://discordapp.com/api/guilds/752070105847955518/widget.png)](https://discord.gg/rWtp5Aj)
 
-**Status**: API freeze (stable release). Note that all sub-packages (mainly extra/\* packages) are
-not part of the API freeze and are developed independently. You can think of them as of 3rd party
-packages that share one repo with the core.
+> Bun is brought to you by :star: [**uptrace/uptrace**](https://github.com/uptrace/uptrace). Uptrace
+> is an open source and blazingly fast
+> [distributed tracing tool](https://get.uptrace.dev/compare/distributed-tracing-tools.html) powered
+> by OpenTelemetry and ClickHouse. Give it a star as well!
 
-Main features are:
+## Features
 
 - Works with [PostgreSQL](https://bun.uptrace.dev/guide/drivers.html#postgresql),
   [MySQL](https://bun.uptrace.dev/guide/drivers.html#mysql) (including MariaDB),
+  [MSSQL](https://bun.uptrace.dev/guide/drivers.html#mssql),
   [SQLite](https://bun.uptrace.dev/guide/drivers.html#sqlite).
-- [Selecting](/example/basic/) into scalars, structs, maps, slices of maps/structs/scalars.
+- [ORM-like](/example/basic/) experience using good old SQL. Bun supports structs, map, scalars, and
+  slices of map/structs/scalars.
 - [Bulk inserts](https://bun.uptrace.dev/guide/query-insert.html).
 - [Bulk updates](https://bun.uptrace.dev/guide/query-update.html) using common table expressions.
 - [Bulk deletes](https://bun.uptrace.dev/guide/query-delete.html).
@@ -29,19 +27,22 @@ Main features are:
 
 Resources:
 
-- [**Get started**](https://bun.uptrace.dev/guide/getting-started.html)
+- [**Get started**](https://bun.uptrace.dev/guide/golang-orm.html)
 - [Examples](https://github.com/uptrace/bun/tree/master/example)
 - [Discussions](https://github.com/uptrace/bun/discussions)
-- [Newsletter](https://blog.uptrace.dev/pages/newsletter.html) to get latest updates.
+- [Chat](https://discord.gg/rWtp5Aj)
 - [Reference](https://pkg.go.dev/github.com/uptrace/bun)
 - [Starter kit](https://github.com/go-bun/bun-starter-kit)
 
 Projects using Bun:
 
 - [gotosocial](https://github.com/superseriousbusiness/gotosocial) - Golang fediverse server.
-- [qvalet](https://github.com/cmaster11/qvalet) listens for HTTP requests and executes commands on
-  demand.
+- [alexedwards/scs](https://github.com/alexedwards/scs) - HTTP Session Management for Go.
+- [emerald-web3-gateway](https://github.com/oasisprotocol/emerald-web3-gateway) - Web3 Gateway for
+  the Oasis Emerald paratime.
+- [lndhub.go](https://github.com/getAlby/lndhub.go) - accounting wrapper for the Lightning Network.
 - [RealWorld app](https://github.com/go-bun/bun-realworld-app)
+- And hundreds more.
 
 ## Benchmark
 
@@ -253,7 +254,7 @@ topRegions := db.NewSelect().
 	TableExpr("regional_sales").
 	Where("total_sales > (SELECT SUM(total_sales) / 10 FROM regional_sales)")
 
-var items map[string]interface{}
+var items []map[string]interface{}
 err := db.NewSelect().
 	With("regional_sales", regionalSales).
 	With("top_regions", topRegions).
@@ -287,19 +288,28 @@ WHERE region IN (SELECT region FROM top_regions)
 GROUP BY region, product
 ```
 
-And scan results into scalars, structs, maps, slices of structs/maps/scalars.
-
-## Installation
+And scan results into scalars, structs, maps, slices of structs/maps/scalars:
 
 ```go
-go get github.com/uptrace/bun
+users := make([]User, 0)
+if err := db.NewSelect().Model(&users).OrderExpr("id ASC").Scan(ctx); err != nil {
+	panic(err)
+}
+
+user1 := new(User)
+if err := db.NewSelect().Model(user1).Where("id = ?", 1).Scan(ctx); err != nil {
+	panic(err)
+}
 ```
 
-You also need to install a database/sql driver and the corresponding Bun
-[dialect](https://bun.uptrace.dev/guide/drivers.html).
-
-See [**Getting started**](https://bun.uptrace.dev/guide/getting-started.html) guide and check
+See [**Getting started**](https://bun.uptrace.dev/guide/golang-orm.html) guide and check
 [examples](example).
+
+## See also
+
+- [Golang HTTP router](https://github.com/uptrace/bunrouter)
+- [Golang ClickHouse ORM](https://github.com/uptrace/go-clickhouse)
+- [Golang msgpack](https://github.com/vmihailenco/msgpack)
 
 ## Contributors
 
