@@ -6,8 +6,7 @@ import (
 )
 
 type aggregateHandler struct {
-	cfg         *AggregateConfig
-	entityStore EntityStore
+	cfg *AggregateConfig
 }
 
 func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error {
@@ -15,14 +14,11 @@ func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error
 	if unit == nil {
 		return fmt.Errorf("unit not found")
 	}
-	replay := IsReplayCommand(cmd)
+
 	id := cmd.GetAggregateId()
-	name := a.cfg.Name
+	replay := IsReplayCommand(cmd)
 
-	aggregate := a.cfg.Factory(id)
-	if err := unit.Load(ctx, id, name, aggregate); 
-
-	aggregate, err := a.entityStore.Load(ctx, a.name, id, DataLoadForce(replay))
+	aggregate, err := unit.Load(ctx, a.cfg, id, DataLoadForce(replay))
 	if err != nil {
 		return err
 	}
@@ -42,7 +38,7 @@ func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error
 		}
 	}
 
-	return a.entityStore.Save(ctx, aggregate)
+	return unit.Save(ctx, aggregate)
 }
 
 // NewAggregateHandler creates the commandhandler
