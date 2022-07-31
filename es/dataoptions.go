@@ -18,7 +18,6 @@ type DataOptions struct {
 	HasEvents      bool
 	HasSnapshots   bool
 	ExtraModels    []interface{}
-	Migrations     []interface{}
 }
 
 func InitializeSnapshots() DataOption {
@@ -46,12 +45,5 @@ func WithTruncate() DataOption {
 func WithRecreate() DataOption {
 	return func(o *DataOptions) {
 		o.RecreateTables = true
-	}
-}
-func RegisterMigrations(migration ...interface{}) DataOption {
-	return func(o *DataOptions) {
-		for _, m := range migration {
-			o.Migrations = append(o.Migrations, m)
-		}
 	}
 }

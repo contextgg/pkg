@@ -11,7 +11,6 @@ import (
 	"github.com/contextgg/pkg/events"
 	"github.com/contextgg/pkg/types"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/migrate"
 )
 
 type event struct {
@@ -55,69 +54,6 @@ type Transaction interface {
 
 	Commit(ctx context.Context) error
 	Rollback(ctx context.Context) error
-}
-
-func MigrateDatabase(db *bun.DB, options ...DataOption) error {
-	opts := dataOptions(options)
-
-	var models []interface{}
-
-	if opts.HasEvents {
-		models = append(models, &event{})
-	}
-	if opts.HasSnapshots {
-		models = append(models, &snapshot{})
-	}
-	for _, model := range opts.ExtraModels {
-		models = append(models, model)
-	}
-
-	ctx := context.Background()
-	for _, model := range models {
-		if opts.TruncateTables {
-			_, err := db.NewTruncateTable().Model(model).Exec(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
-		if opts.RecreateTables {
-			_, err := db.NewDropTable().Model(model).IfExists().Exec(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
-		_, err := db.NewCreateTable().Model(model).IfNotExists().Exec(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(opts.Migrations) > 0 {
-		migrations := migrate.NewMigrations()
-		for _, item := range opts.Migrations {
-			m, ok := item.(migrate.Migration)
-			if !ok {
-				return fmt.Errorf("Invalid type of migration")
-			}
-			migrations.Add(m)
-		}
-
-		migrator := migrate.NewMigrator(db, migrations)
-
-		// init the migrations
-		if err := migrator.Init(ctx); err != nil {
-			return err
-		}
-
-		// run the migrations
-		if _, err := migrator.Migrate(ctx); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func NewData(db bun.IDB) Data {

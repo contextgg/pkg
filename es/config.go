@@ -7,12 +7,15 @@ import (
 type Config interface {
 	Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConfig
 	Saga(s Saga) *SagaConfig
+
+	GetEntities() []Entity
 }
 
 type config struct {
 	sync.RWMutex
 
 	Aggregates []*AggregateConfig
+	Sagas      []*SagaConfig
 }
 
 func (cfg *config) Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConfig {
@@ -20,18 +23,36 @@ func (cfg *config) Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConf
 	defer cfg.Unlock()
 
 	all := append(opts, EntityFactory(fn))
-	return &AggregateConfig{
+	out := &AggregateConfig{
 		opts: NewEntityOptions(all),
 	}
+
+	cfg.Aggregates = append(cfg.Aggregates, out)
+	return out
 }
 
 func (cfg *config) Saga(s Saga) *SagaConfig {
 	cfg.Lock()
 	defer cfg.Unlock()
 
-	return &SagaConfig{
+	out := &SagaConfig{
 		s: s,
 	}
+
+	cfg.Sagas = append(cfg.Sagas, out)
+	return out
+}
+
+func (cfg *config) GetEntities() []Entity {
+	cfg.RLock()
+	defer cfg.RUnlock()
+
+	var entities []Entity
+	for _, a := range cfg.Aggregates {
+		obj := a.opts.Factory("")
+		entities = append(entities, obj)
+	}
+	return entities
 }
 
 type SagaConfig struct {

@@ -2,6 +2,7 @@ package es
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/contextgg/pkg/types"
 )
@@ -15,8 +16,13 @@ type query[T any] struct {
 }
 
 func (q *query[T]) Load(ctx context.Context, aggregateId string) (*T, error) {
+	unit := UnitFromContext(ctx)
+	if unit == nil {
+		return nil, fmt.Errorf("no unit in context")
+	}
+
 	var item T
-	if err := q.unit.Load(ctx, aggregateId, q.entityName, &item); err != nil {
+	if err := unit.Load(ctx, aggregateId, q.entityName, &item); err != nil {
 		return nil, err
 	}
 	return &item, nil

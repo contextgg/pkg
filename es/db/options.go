@@ -13,6 +13,7 @@ type Options struct {
 	Password string
 	Debug    bool
 	Recreate bool
+	Migrate  bool
 }
 
 func (o *Options) DSN() string {

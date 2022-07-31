@@ -22,9 +22,9 @@ func (r *replayService) All(ctx context.Context, aggregateType string) (int, err
 		return 0, fmt.Errorf("no handler for %s", aggregateType)
 	}
 
-	unit, err := GetUnit(ctx)
-	if err != nil {
-		return 0, err
+	unit := UnitFromContext(ctx)
+	if unit == nil {
+		return 0, fmt.Errorf("no unit in context")
 	}
 
 	namespace := ns.FromContext(ctx)
