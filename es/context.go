@@ -2,6 +2,7 @@ package es
 
 import (
 	"context"
+	"fmt"
 )
 
 type Key int
@@ -19,4 +20,12 @@ func UnitFromContext(ctx context.Context) Unit {
 		return unit
 	}
 	return nil
+}
+
+func GetUnit(ctx context.Context) (Unit, error) {
+	unit := UnitFromContext(ctx)
+	if unit == nil {
+		return nil, fmt.Errorf("no unit in context")
+	}
+	return unit, nil
 }
