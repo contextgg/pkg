@@ -32,12 +32,27 @@ func EntityDisableProject() EntityOption {
 		o.Project = false
 	}
 }
-
-// EntityFactory specifies the option to provide a factory for an entity.
 func EntityFactory(factory EntityFunc) EntityOption {
 	return func(o *EntityOptions) {
 		o.Factory = factory
-		o.Revision = "rev1"
-		o.Project = true
 	}
+}
+
+func NewEntityOptions(options []EntityOption) EntityOptions {
+	// set defaults.
+	o := EntityOptions{
+		Revision:       "rev1",
+		Project:        true,
+		MinVersionDiff: 0,
+	}
+
+	// apply options.
+	for _, opt := range options {
+		opt(&o)
+	}
+
+	if o.Factory == nil {
+		panic("You need to supply a factory method")
+	}
+	return o
 }

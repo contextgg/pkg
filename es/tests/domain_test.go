@@ -2,80 +2,45 @@ package tests
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/contextgg/pkg/db/pg"
 	"github.com/contextgg/pkg/es"
-	"github.com/contextgg/pkg/es/tests/aggregates"
+	"github.com/contextgg/pkg/es/db"
 	"github.com/contextgg/pkg/es/tests/commands"
-	"github.com/contextgg/pkg/logger"
 	"github.com/contextgg/pkg/ns"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
-	"github.com/uptrace/bun/extra/bundebug"
-	"go.uber.org/zap"
 )
 
-func SetupBus() (es.CommandHandler, error) {
-	z, _ := zap.NewDevelopment()
-	l := logger.NewLogger(z)
-
-	hostname := os.Getenv("DB_HOSTNAME")
-	if len(hostname) == 0 {
-		hostname = "localhost"
-	}
-
-	dbConn := fmt.Sprintf("postgresql://%s:5432/testdb?sslmode=disable", hostname)
-	dbName := "testdb"
-	dbUser := "contextgg"
-	dbPass := "mysecret"
-
-	err := pg.Recreate(func() (*bun.DB, error) {
-		conn := pgdriver.NewConnector(
-			pgdriver.WithDSN(dbConn),
-			pgdriver.WithDatabase("postgres"),
-			pgdriver.WithUser(dbUser),
-			pgdriver.WithPassword(dbPass),
-		)
-		sqldb := sql.OpenDB(conn)
-		return bun.NewDB(sqldb, pgdialect.New()), nil
-	}, dbName)
+func SetupClient() (es.Client, error) {
+	conn, err := es.NewConn(
+		db.WithDbHost(os.Getenv("DB_HOSTNAME")),
+		db.WithDbName("testdb"),
+		db.WithDbUser("contextgg"),
+		db.WithDbPassword("mysecret"),
+		db.WithDebug(true),
+		db.Recreate(true),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	conn := pgdriver.NewConnector(
-		pgdriver.WithDSN(dbConn),
-		pgdriver.WithDatabase(dbName),
-		pgdriver.WithUser(dbUser),
-		pgdriver.WithPassword(dbPass),
-	)
+	// nc, err := nats.Connect("nats://localhost:4222")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	sqldb := sql.OpenDB(conn)
-	db := bun.NewDB(sqldb, pgdialect.New())
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	cfg := SetupDomain()
 
-	// migrate the DB!
-	if err := es.MigrateDatabase(
-		db,
-		es.InitializeEvents(),
-		es.InitializeSnapshots(),
-		es.InitializeEntities(
-			&aggregates.Demo{},
-		),
-	); err != nil {
+	cli, err := es.NewClient(cfg, conn)
+	if err != nil {
 		return nil, err
 	}
 
-	return NewBus(db, l)
+	return cli, nil
 }
 
 func TestIt(t *testing.T) {
-	bus, err := SetupBus()
+	cli, err := SetupClient()
 	if err != nil {
 		t.Error(err)
 		return
@@ -86,17 +51,36 @@ func TestIt(t *testing.T) {
 			BaseCommand: es.BaseCommand{
 				AggregateId: "d63b875a-a664-410c-9102-21bfd7381f6e",
 			},
-			Name: "Hello2",
+			Name: "Demo",
 		},
 	}
 
-	for _, cmd := range cmds {
-		ctx := context.Background()
-		ctx = ns.SetNamespace(ctx, "test")
+	ctx := context.Background()
+	ctx = ns.SetNamespace(ctx, "test")
 
-		if err := bus.HandleCommand(ctx, cmd); err != nil {
-			t.Error(err)
-			return
-		}
+	// create a unit.
+	unit, err := cli.Unit(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	tx, err := unit.Begin(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer func() {
+		tx.Rollback(ctx)
+	}()
+
+	if err := unit.Dispatch(ctx, cmds...); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		t.Error(err)
+		return
 	}
 }

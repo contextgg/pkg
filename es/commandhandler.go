@@ -2,48 +2,17 @@ package es
 
 import (
 	"context"
-
-	"github.com/contextgg/pkg/types"
 )
 
-type aggregateCommandHandler struct {
-	entityStore EntityStore
-	name        string
+// CommandHandler for handling commands
+type CommandHandler interface {
+	HandleCommand(context.Context, Command) error
 }
 
-func (a *aggregateCommandHandler) HandleCommand(ctx context.Context, cmd Command) error {
-	replay := IsReplayCommand(cmd)
-	id := cmd.GetAggregateId()
+// CommandHandlerFunc is a function that can be used as a command handler.
+type CommandHandlerFunc func(context.Context, Command) error
 
-	aggregate, err := a.entityStore.Load(ctx, a.name, id, DataLoadForce(replay))
-	if err != nil {
-		return err
-	}
-
-	cv, okCV := cmd.(CommandVersion)
-	versioned, okVersioned := aggregate.(Versioned)
-	if okCV && okVersioned && cv.GetVersion() != versioned.GetVersion() {
-		return ErrVersionMismatch
-	}
-
-	// handle the command
-	if !replay {
-		if handler, ok := aggregate.(CommandHandler); ok {
-			if err := handler.HandleCommand(ctx, cmd); err != nil {
-				return err
-			}
-		}
-	}
-
-	return a.entityStore.Save(ctx, aggregate)
-}
-
-// NewAggregateSourcedHandler creates the commandhandler
-func NewAggregateSourcedHandler(entityStore EntityStore, entityType EntityType) CommandHandler {
-	name := types.GetTypeName(entityType)
-	handler := &aggregateCommandHandler{
-		entityStore: entityStore,
-		name:        name,
-	}
-	return handler
+// HandleCommand implements the HandleCommand method of the CommandHandler.
+func (h CommandHandlerFunc) HandleCommand(ctx context.Context, cmd Command) error {
+	return h(ctx, cmd)
 }

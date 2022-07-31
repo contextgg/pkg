@@ -22,13 +22,15 @@ func (r *replayService) All(ctx context.Context, aggregateType string) (int, err
 		return 0, fmt.Errorf("no handler for %s", aggregateType)
 	}
 
-	unit, err := GetUnit(ctx)
-	if err != nil {
-		return 0, err
+	unit := UnitFromContext(ctx)
+	if unit == nil {
+		return 0, fmt.Errorf("no unit in context")
 	}
 
+	data := NewData(unit.Db())
+
 	namespace := ns.FromContext(ctx)
-	evts, err := unit.Data().LoadUniqueEvents(ctx, namespace, aggregateType)
+	evts, err := data.LoadUniqueEvents(ctx, namespace, aggregateType)
 	if err != nil {
 		return 0, err
 	}

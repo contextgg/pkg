@@ -29,14 +29,3 @@ func EventMatcherMiddleware(matcher EventMatcher) EventHandlerMiddleware {
 		})
 	}
 }
-
-func EventUniterMiddleware(uniter Uniter) EventHandlerMiddleware {
-	return func(h EventHandler) EventHandler {
-		return EventHandlerFunc(func(ctx context.Context, evt events.Event) error {
-			exec := func(ctx context.Context) error {
-				return h.HandleEvent(ctx, evt)
-			}
-			return uniter.Run(ctx, exec)
-		})
-	}
-}
