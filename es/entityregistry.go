@@ -10,25 +10,10 @@ import (
 
 var ErrEntityNotFound = fmt.Errorf("Entity not found")
 
-func entityOptions(options []EntityOption) EntityOptions {
-	// set defaults.
-	o := EntityOptions{
-		Revision:       "rev1",
-		Project:        true,
-		MinVersionDiff: 0,
-	}
-
-	// apply options.
-	for _, opt := range options {
-		opt(&o)
-	}
-	return o
-}
-
 // EntityRegistry stores the handlers for commands
 type EntityRegistry interface {
 	GetOptions(entityName string) (EntityOptions, error)
-	SetEntity(entityType EntityType, opts ...EntityOption) error
+	SetEntity(entityType interface{}, opts ...EntityOption) error
 }
 
 type entityRegistry struct {
@@ -36,11 +21,11 @@ type entityRegistry struct {
 	registry map[string]EntityOptions
 }
 
-func (r *entityRegistry) SetEntity(entityType EntityType, opts ...EntityOption) error {
+func (r *entityRegistry) SetEntity(entityType interface{}, opts ...EntityOption) error {
 	r.Lock()
 	defer r.Unlock()
 
-	options := entityOptions(opts)
+	options := NewEntityOptions(opts)
 	if options.Factory == nil {
 		return errors.New("You need to supply a factory method")
 	}

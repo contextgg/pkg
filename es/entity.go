@@ -1,8 +1,5 @@
 package es
 
-// EntityType for helping building registry
-type EntityType interface{}
-
 // EntityFunc for creating an entity
 type EntityFunc func(string) Entity
 

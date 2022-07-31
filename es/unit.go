@@ -1,7 +1,10 @@
 package es
 
 import (
+	"context"
+
 	"github.com/contextgg/pkg/events"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -22,6 +25,12 @@ type Unit interface {
 	Events() []events.Event
 	// ClearEvents clears all uncommitted events after saving.
 	ClearEvents()
+
+	// Dispatch will dispatch the events to the event publishers
+	Dispatch(ctx context.Context, cmds ...Command) error
+
+	// Load will load the aggregate from the database.
+	Load(ctx context.Context, id uuid.UUID, aggregateName string, out interface{}) error
 }
 
 type unit struct {

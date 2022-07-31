@@ -2,62 +2,37 @@ package tests
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/contextgg/pkg/db/pg"
 	"github.com/contextgg/pkg/es"
+	"github.com/contextgg/pkg/es/db"
 	"github.com/contextgg/pkg/es/tests/aggregates"
 	"github.com/contextgg/pkg/es/tests/commands"
 	"github.com/contextgg/pkg/logger"
 	"github.com/contextgg/pkg/ns"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
-	"github.com/uptrace/bun/extra/bundebug"
 	"go.uber.org/zap"
 )
 
 func SetupBus() (es.CommandHandler, error) {
-	z, _ := zap.NewDevelopment()
-	l := logger.NewLogger(z)
-
-	hostname := os.Getenv("DB_HOSTNAME")
-	if len(hostname) == 0 {
-		hostname = "localhost"
-	}
-
-	dbConn := fmt.Sprintf("postgresql://%s:5432/testdb?sslmode=disable", hostname)
-	dbName := "testdb"
-	dbUser := "contextgg"
-	dbPass := "mysecret"
-
-	err := pg.Recreate(func() (*bun.DB, error) {
-		conn := pgdriver.NewConnector(
-			pgdriver.WithDSN(dbConn),
-			pgdriver.WithDatabase("postgres"),
-			pgdriver.WithUser(dbUser),
-			pgdriver.WithPassword(dbPass),
-		)
-		sqldb := sql.OpenDB(conn)
-		return bun.NewDB(sqldb, pgdialect.New()), nil
-	}, dbName)
+	conn, err := es.NewConn(
+		db.WithDbHost(os.Getenv("DB_HOSTNAME")),
+		db.WithDbName("testdb"),
+		db.WithDbUser("contextgg"),
+		db.WithDbPassword("mysecret"),
+		db.WithDebug(true),
+		db.Recreate(true),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	conn := pgdriver.NewConnector(
-		pgdriver.WithDSN(dbConn),
-		pgdriver.WithDatabase(dbName),
-		pgdriver.WithUser(dbUser),
-		pgdriver.WithPassword(dbPass),
-	)
+	cfg := SetupDomain()
 
-	sqldb := sql.OpenDB(conn)
-	db := bun.NewDB(sqldb, pgdialect.New())
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	cli, err := es.NewClient(conn, cfg)
+
+	z, _ := zap.NewDevelopment()
+	l := logger.NewLogger(z)
 
 	// migrate the DB!
 	if err := es.MigrateDatabase(

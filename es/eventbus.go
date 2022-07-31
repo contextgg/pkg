@@ -52,7 +52,6 @@ func (h EventHandlers) HandleEvent(ctx context.Context, evt events.Event) error 
 
 type eventBus struct {
 	handlers EventHandlers
-	uniter   Uniter
 }
 
 func (s *eventBus) AddHandler(handler EventHandler, matcher EventMatcher) {
