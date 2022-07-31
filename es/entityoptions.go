@@ -1,11 +1,8 @@
 package es
 
-import "github.com/contextgg/pkg/types"
-
 // EntityOptions represents the configuration options
 // for the entity.
 type EntityOptions struct {
-	Name           string
 	Factory        EntityFunc
 	Revision       string
 	MinVersionDiff int
@@ -40,17 +37,6 @@ func EntityFactory(factory EntityFunc) EntityOption {
 		o.Factory = factory
 	}
 }
-func EntityName(name string) EntityOption {
-	return func(o *EntityOptions) {
-		o.Name = name
-	}
-}
-func EntityType(entityType interface{}) EntityOption {
-	name := types.GetTypeName(entityType)
-	return func(o *EntityOptions) {
-		o.Name = name
-	}
-}
 
 func NewEntityOptions(options []EntityOption) EntityOptions {
 	// set defaults.
@@ -67,9 +53,6 @@ func NewEntityOptions(options []EntityOption) EntityOptions {
 
 	if o.Factory == nil {
 		panic("You need to supply a factory method")
-	}
-	if len(o.Name) == 0 {
-		o.Name = types.GetTypeName(o.Factory(""))
 	}
 	return o
 }

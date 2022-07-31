@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"strings"
 )
 
 type Options struct {
@@ -17,31 +16,7 @@ type Options struct {
 }
 
 func (o *Options) DSN() string {
-	var parts []string
-
-	if o.Host != "" {
-		parts = append(parts, fmt.Sprintf("host=%s", o.Host))
-	}
-
-	if o.Port != 0 {
-		parts = append(parts, fmt.Sprintf("port=%d", o.Port))
-	}
-
-	if o.DbName != "" {
-		parts = append(parts, fmt.Sprintf("dbname=%s", o.DbName))
-	}
-
-	if o.User != "" {
-		parts = append(parts, fmt.Sprintf("user=%s", o.User))
-	}
-
-	if o.Password != "" {
-		parts = append(parts, fmt.Sprintf("password=%s", o.Password))
-	}
-
-	parts = append(parts, "sslmode=disable")
-
-	return strings.Join(parts, " ")
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", o.User, o.Password, o.Host, o.Port, o.DbName)
 }
 
 func NewOptions() *Options {

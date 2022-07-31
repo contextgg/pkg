@@ -18,7 +18,7 @@ func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error
 	id := cmd.GetAggregateId()
 	replay := IsReplayCommand(cmd)
 
-	aggregate, err := unit.Load(ctx, a.cfg, id, DataLoadForce(replay))
+	aggregate, err := unit.Load(ctx, &a.cfg.EntityOptions, id, DataLoadForce(replay))
 	if err != nil {
 		return err
 	}

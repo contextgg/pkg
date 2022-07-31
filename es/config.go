@@ -5,9 +5,11 @@ import (
 )
 
 type Config interface {
+	Publisher(pub EventPublisher)
 	Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConfig
 	Saga(s Saga) *SagaConfig
 
+	GetPublishers() []EventPublisher
 	GetAggregates() []*AggregateConfig
 	GetSagas() []*SagaConfig
 }
@@ -15,8 +17,16 @@ type Config interface {
 type config struct {
 	sync.RWMutex
 
+	Publishers []EventPublisher
 	Aggregates []*AggregateConfig
 	Sagas      []*SagaConfig
+}
+
+func (cfg *config) Publisher(pub EventPublisher) {
+	cfg.Lock()
+	defer cfg.Unlock()
+
+	cfg.Publishers = append(cfg.Publishers, pub)
 }
 
 func (cfg *config) Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConfig {
@@ -44,6 +54,12 @@ func (cfg *config) Saga(s Saga) *SagaConfig {
 	return out
 }
 
+func (cfg *config) GetPublishers() []EventPublisher {
+	cfg.RLock()
+	defer cfg.RUnlock()
+
+	return cfg.Publishers
+}
 func (cfg *config) GetAggregates() []*AggregateConfig {
 	cfg.RLock()
 	defer cfg.RUnlock()

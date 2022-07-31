@@ -24,6 +24,11 @@ func SetupClient() (es.Client, error) {
 		return nil, err
 	}
 
+	// nc, err := nats.Connect("nats://localhost:4222")
+	// if err != nil {
+	// 	return nil, err
+	// }
+
 	cfg := SetupDomain()
 
 	cli, err := es.NewClient(cfg, conn)
@@ -46,7 +51,7 @@ func TestIt(t *testing.T) {
 			BaseCommand: es.BaseCommand{
 				AggregateId: "d63b875a-a664-410c-9102-21bfd7381f6e",
 			},
-			Name: "Hello2",
+			Name: "Demo",
 		},
 	}
 
@@ -55,8 +60,26 @@ func TestIt(t *testing.T) {
 
 	// create a unit.
 	unit, err := cli.Unit(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	tx, err := unit.Begin(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer func() {
+		tx.Rollback(ctx)
+	}()
 
 	if err := unit.Dispatch(ctx, cmds...); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		t.Error(err)
 		return
 	}

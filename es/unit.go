@@ -2,57 +2,130 @@ package es
 
 import (
 	"context"
-	"fmt"
+	"sync"
 
-	"github.com/contextgg/pkg/ns"
+	"github.com/contextgg/pkg/events"
 	"github.com/uptrace/bun"
 )
 
+type Tx interface {
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
+}
+
 type Unit interface {
-	// DB access to the transaction
-	DB() bun.IDB
+	// Db access to the transaction
+	Db() bun.IDB
+
+	// Create a new TX
+	Begin(ctx context.Context) (Tx, error)
+
 	// Dispatch will dispatch the events to the event publishers
 	Dispatch(ctx context.Context, cmds ...Command) error
-	// Load will load the aggregate from the database.
-	Load(ctx context.Context, id string, aggregateName string, out interface{}) error
+
+	// Load will load the entity from the database.
+	Load(ctx context.Context, entityOptions *EntityOptions, id string, dataOptions ...DataLoadOption) (Entity, error)
+
+	// Save will save the entity to the database.
+	Save(ctx context.Context, entity Entity) error
 }
 
 type unit struct {
+	sync.RWMutex
 	cli Client
 	db  bun.IDB
 	tx  *bun.Tx
+
+	events []events.Event
 }
 
-func (u *unit) DB() bun.IDB {
+func (u *unit) Db() bun.IDB {
 	if u.tx != nil {
 		return u.tx
 	}
 	return u.db
 }
 
-func (u *unit) Dispatch(ctx context.Context, cmds ...Command) error {
-	ctx = SetUnit(ctx, u)
+func (u *unit) Begin(ctx context.Context) (Tx, error) {
+	u.Lock()
+	defer u.Unlock()
 
-	for _, cmd := range cmds {
-		h, err := u.cli.GetCommandHandler(cmd)
+	if u.tx == nil {
+		tx, err := u.db.BeginTx(ctx, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		if err := h.HandleCommand(ctx, cmd); err != nil {
-			return err
-		}
+		u.tx = &tx
 	}
+	return u, nil
+}
 
+func (u *unit) Commit(ctx context.Context) error {
+	u.Lock()
+	defer u.Unlock()
+
+	if u.tx == nil {
+		return nil
+	}
+	err := u.tx.Commit()
+	if err != nil {
+		return err
+	}
+	u.tx = nil
+
+	// send over the
+	if err := u.cli.PublishEvents(ctx, u.events...); err != nil {
+		// TODO log this!!!
+		return err
+	}
+	u.events = nil
 	return nil
 }
 
-func (u *unit) Load(ctx context.Context, id string, aggregateName string, out interface{}) error {
-	namespace := ns.FromContext(ctx)
-	data := NewData(u.DB())
+func (u *unit) Rollback(ctx context.Context) error {
+	u.Lock()
+	defer u.Unlock()
 
-	// return data.Load(ctx, u.serviceName, aggregateName, namespace, id, out)
-	return fmt.Errorf("not implemented")
+	if u.tx == nil {
+		return nil
+	}
+	err := u.tx.Rollback()
+	if err != nil {
+		return err
+	}
+	u.tx = nil
+	return nil
+}
+
+func (u *unit) Dispatch(ctx context.Context, cmds ...Command) error {
+	ctx = SetUnit(ctx, u)
+	return u.cli.HandleCommands(ctx, cmds...)
+}
+
+func (u *unit) Load(ctx context.Context, entityOptions *EntityOptions, id string, dataOptions ...DataLoadOption) (Entity, error) {
+	db := u.Db()
+	data := NewData(db)
+	dataStore := NewDataStore(data, entityOptions)
+	return dataStore.Load(ctx, id, dataOptions...)
+}
+
+func (u *unit) Save(ctx context.Context, entity Entity) error {
+	entityOptions, err := u.cli.GetEntityOptions(entity)
+	if err != nil {
+		return err
+	}
+
+	db := u.Db()
+	data := NewData(db)
+	dataStore := NewDataStore(data, entityOptions)
+
+	events, err := dataStore.Save(ctx, entity)
+	if err != nil {
+		return err
+	}
+
+	u.events = append(u.events, events...)
+	return u.cli.HandleEvents(ctx, events...)
 }
 
 func newUnit(cli Client, db bun.IDB) Unit {
