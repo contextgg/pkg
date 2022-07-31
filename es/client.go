@@ -2,16 +2,23 @@ package es
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/contextgg/pkg/types"
 )
 
 type Client interface {
 	Initialize(ctx context.Context) error
 	Unit(ctx context.Context) (Unit, error)
+	GetCommandHandler(cmd Command) (CommandHandler, error)
 }
 
 type client struct {
 	cfg  Config
 	conn Conn
+
+	entities []Entity
+	handlers map[string]CommandHandler
 }
 
 func (c *client) Unit(ctx context.Context) (Unit, error) {
@@ -19,23 +26,37 @@ func (c *client) Unit(ctx context.Context) (Unit, error) {
 		return unit, nil
 	}
 
-	return newUnit(c.cfg, c.conn.Db())
+	return newUnit(c, c.conn.Db()), nil
 }
 
 func (c *client) Initialize(ctx context.Context) error {
-	entities := c.cfg.GetEntities()
+	aggregates := c.cfg.GetAggregates()
+	for _, agg := range aggregates {
+		ent := agg.Factory("")
+
+		c.entities = append(c.entities, ent)
+	}
+
 	db := c.conn.Db()
 
 	if err := MigrateDatabase(
 		db,
 		InitializeEvents(),
 		InitializeSnapshots(),
-		InitializeEntities(entities...),
+		InitializeEntities(c.entities...),
 	); err != nil {
 		return err
 	}
-
 	return nil
+}
+
+func (c *client) GetCommandHandler(cmd Command) (CommandHandler, error) {
+	name := types.GetTypeName(cmd)
+	h, ok := c.handlers[name]
+	if !ok {
+		return nil, fmt.Errorf("command handler not found: %s", name)
+	}
+	return h, nil
 }
 
 func NewClient(cfg Config, conn Conn) (Client, error) {

@@ -2,9 +2,9 @@ package es
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/contextgg/pkg/ns"
-	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -30,11 +30,29 @@ func (u *unit) DB() bun.IDB {
 	return u.db
 }
 
-func (u *unit) Load(ctx context.Context, id uuid.UUID, aggregateName string, out interface{}) error {
+func (u *unit) Dispatch(ctx context.Context, cmds ...Command) error {
+	ctx = SetUnit(ctx, u)
+
+	for _, cmd := range cmds {
+		h, err := u.cli.GetCommandHandler(cmd)
+		if err != nil {
+			return err
+		}
+
+		if err := h.HandleCommand(ctx, cmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (u *unit) Load(ctx context.Context, id string, aggregateName string, out interface{}) error {
 	namespace := ns.FromContext(ctx)
 	data := NewData(u.DB())
 
-	return data.Load(ctx, u.serviceName, aggregateName, namespace, id, out)
+	// return data.Load(ctx, u.serviceName, aggregateName, namespace, id, out)
+	return fmt.Errorf("not implemented")
 }
 
 func newUnit(cli Client, db bun.IDB) Unit {

@@ -8,7 +8,8 @@ type Config interface {
 	Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConfig
 	Saga(s Saga) *SagaConfig
 
-	GetEntities() []Entity
+	GetAggregates() []*AggregateConfig
+	GetSagas() []*SagaConfig
 }
 
 type config struct {
@@ -24,7 +25,7 @@ func (cfg *config) Aggregate(fn EntityFunc, opts ...EntityOption) *AggregateConf
 
 	all := append(opts, EntityFactory(fn))
 	out := &AggregateConfig{
-		opts: NewEntityOptions(all),
+		EntityOptions: NewEntityOptions(all),
 	}
 
 	cfg.Aggregates = append(cfg.Aggregates, out)
@@ -36,29 +37,30 @@ func (cfg *config) Saga(s Saga) *SagaConfig {
 	defer cfg.Unlock()
 
 	out := &SagaConfig{
-		s: s,
+		Saga: s,
 	}
 
 	cfg.Sagas = append(cfg.Sagas, out)
 	return out
 }
 
-func (cfg *config) GetEntities() []Entity {
+func (cfg *config) GetAggregates() []*AggregateConfig {
 	cfg.RLock()
 	defer cfg.RUnlock()
 
-	var entities []Entity
-	for _, a := range cfg.Aggregates {
-		obj := a.opts.Factory("")
-		entities = append(entities, obj)
-	}
-	return entities
+	return cfg.Aggregates
+}
+func (cfg *config) GetSagas() []*SagaConfig {
+	cfg.RLock()
+	defer cfg.RUnlock()
+
+	return cfg.Sagas
 }
 
 type SagaConfig struct {
 	sync.RWMutex
+	Saga
 
-	s      Saga
 	events []interface{}
 }
 
@@ -72,8 +74,8 @@ func (cfg *SagaConfig) Events(evts ...interface{}) *SagaConfig {
 
 type AggregateConfig struct {
 	sync.RWMutex
+	EntityOptions
 
-	opts     EntityOptions
 	commands []Command
 }
 

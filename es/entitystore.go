@@ -2,40 +2,24 @@ package es
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/contextgg/pkg/events"
 )
 
 type EntityStore interface {
-	New(ctx context.Context, entityType string, entityId string) (Entity, error)
 	Load(ctx context.Context, entityType string, entityId string, opts ...DataLoadOption) (Entity, error)
 	Save(ctx context.Context, entities ...Entity) error
 }
 
 type entityStore struct {
-	EntityRegistry
 	eventHandler EventHandler
 }
 
-func (e *entityStore) New(ctx context.Context, entityType string, entityId string) (Entity, error) {
-	entityOptions, err := e.EntityRegistry.GetOptions(entityType)
-	if err != nil {
-		return nil, err
-	}
-
-	// make the aggregate
-	entity := entityOptions.Factory(entityId)
-	return entity, nil
-}
 func (e *entityStore) Load(ctx context.Context, entityType string, entityId string, opts ...DataLoadOption) (Entity, error) {
-	entityOptions, err := e.EntityRegistry.GetOptions(entityType)
-	if err != nil {
-		return nil, err
-	}
-
-	unit, err := GetUnit(ctx)
-	if err != nil {
-		return nil, err
+	unit := UnitFromContext(ctx)
+	if unit == nil {
+		return nil, fmt.Errorf("unit not found")
 	}
 
 	store := NewDataStore(unit.Data(), &entityOptions)

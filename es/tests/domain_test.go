@@ -7,14 +7,11 @@ import (
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/es/db"
-	"github.com/contextgg/pkg/es/tests/aggregates"
 	"github.com/contextgg/pkg/es/tests/commands"
-	"github.com/contextgg/pkg/logger"
 	"github.com/contextgg/pkg/ns"
-	"go.uber.org/zap"
 )
 
-func SetupBus() (es.CommandHandler, error) {
+func SetupClient() (es.Client, error) {
 	conn, err := es.NewConn(
 		db.WithDbHost(os.Getenv("DB_HOSTNAME")),
 		db.WithDbName("testdb"),
@@ -29,28 +26,16 @@ func SetupBus() (es.CommandHandler, error) {
 
 	cfg := SetupDomain()
 
-	cli, err := es.NewClient(conn, cfg)
-
-	z, _ := zap.NewDevelopment()
-	l := logger.NewLogger(z)
-
-	// migrate the DB!
-	if err := es.MigrateDatabase(
-		db,
-		es.InitializeEvents(),
-		es.InitializeSnapshots(),
-		es.InitializeEntities(
-			&aggregates.Demo{},
-		),
-	); err != nil {
+	cli, err := es.NewClient(cfg, conn)
+	if err != nil {
 		return nil, err
 	}
 
-	return NewBus(db, l)
+	return cli, nil
 }
 
 func TestIt(t *testing.T) {
-	bus, err := SetupBus()
+	cli, err := SetupClient()
 	if err != nil {
 		t.Error(err)
 		return
@@ -65,13 +50,14 @@ func TestIt(t *testing.T) {
 		},
 	}
 
-	for _, cmd := range cmds {
-		ctx := context.Background()
-		ctx = ns.SetNamespace(ctx, "test")
+	ctx := context.Background()
+	ctx = ns.SetNamespace(ctx, "test")
 
-		if err := bus.HandleCommand(ctx, cmd); err != nil {
-			t.Error(err)
-			return
-		}
+	// create a unit.
+	unit, err := cli.Unit(ctx)
+
+	if err := unit.Dispatch(ctx, cmds...); err != nil {
+		t.Error(err)
+		return
 	}
 }

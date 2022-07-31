@@ -7,6 +7,19 @@ import (
 	"github.com/contextgg/pkg/events"
 )
 
+// EventBusError is an async error containing the error returned from a handler
+// or observer and the event that it happened on.
+type EventBusError struct {
+	Err   error
+	Ctx   context.Context
+	Event *events.Event
+}
+
+// Error implements the Error method of the error interface.
+func (e EventBusError) Error() string {
+	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
+}
+
 // EventPublisher for publishing events
 type EventPublisher interface {
 	// PublishEvent the event on the bus.
