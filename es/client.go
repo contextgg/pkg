@@ -23,7 +23,7 @@ type client struct {
 	conn Conn
 
 	entities        []Entity
-	entityOptions   map[string]*EntityOptions
+	entityOptions   map[reflect.Type]*EntityOptions
 	commandHandlers map[reflect.Type]CommandHandler
 	eventHandlers   map[reflect.Type]EventHandler
 }
@@ -48,11 +48,15 @@ func (c *client) Initialize(ctx context.Context) error {
 	aggregates := c.cfg.GetAggregates()
 	for _, agg := range aggregates {
 		ent := agg.Factory("")
+		t := types.GetElemType(ent)
 
 		c.entities = append(c.entities, ent)
-		c.entityOptions[ent.GetTypeName()] = &agg.EntityOptions
+		c.entityOptions[t] = &agg.EntityOptions
 
-		handler := NewAggregateHandler(agg)
+		handler := agg.handler
+		if handler == nil {
+			handler = NewAggregateHandler(agg.Factory)
+		}
 		for _, cmd := range agg.commands {
 			t := types.GetElemType(cmd)
 			c.commandHandlers[t] = handler
@@ -77,12 +81,12 @@ func (c *client) GetEntityOptions(entity Entity) (*EntityOptions, error) {
 		return nil, fmt.Errorf("entity is nil")
 	}
 
-	name := entity.GetTypeName()
-	if opts, ok := c.entityOptions[name]; ok {
+	t := types.GetElemType(entity)
+	if opts, ok := c.entityOptions[t]; ok {
 		return opts, nil
 	}
 
-	return nil, fmt.Errorf("entity options not found: %s", name)
+	return nil, fmt.Errorf("entity options not found: %v", t)
 }
 
 func (c *client) HandleCommands(ctx context.Context, cmds ...Command) error {
@@ -131,7 +135,7 @@ func NewClient(cfg Config, conn Conn) (Client, error) {
 	cli := &client{
 		cfg:             cfg,
 		conn:            conn,
-		entityOptions:   map[string]*EntityOptions{},
+		entityOptions:   map[reflect.Type]*EntityOptions{},
 		commandHandlers: map[reflect.Type]CommandHandler{},
 		eventHandlers:   map[reflect.Type]EventHandler{},
 	}

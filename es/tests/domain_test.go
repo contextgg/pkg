@@ -4,9 +4,11 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/contextgg/pkg/es"
 	"github.com/contextgg/pkg/es/db"
+	"github.com/contextgg/pkg/es/tests/aggregates"
 	"github.com/contextgg/pkg/es/tests/commands"
 	"github.com/contextgg/pkg/ns"
 )
@@ -53,6 +55,23 @@ func TestIt(t *testing.T) {
 			},
 			Name: "Demo",
 		},
+		&commands.LedgerAddEntryCommand{
+			BaseCommand: es.BaseCommand{
+				AggregateId: "b3fc2c26-4ef1-4edb-9363-82c52b30ba87",
+			},
+			LedgerId:    "685d3238-2cb9-4171-a739-cb887b2253c4",
+			Book:        "USD",
+			Description: "Can have money",
+			At:          time.Now(),
+			Items: []*commands.LedgerLineItem{
+				{
+					AccountId:    "d63b875a-a664-410c-9102-21bfd7381f6e",
+					SubAccountId: "deposit",
+					Credit:       100,
+					Debit:        0,
+				},
+			},
+		},
 	}
 
 	ctx := context.Background()
@@ -64,6 +83,7 @@ func TestIt(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	ctx = es.SetUnit(ctx, unit)
 
 	tx, err := unit.Begin(ctx)
 	if err != nil {
@@ -83,4 +103,13 @@ func TestIt(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	q := es.NewQuery[*aggregates.Demo]()
+	demo, err := q.Load(ctx, "d63b875a-a664-410c-9102-21bfd7381f6e")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	t.Log(demo)
 }

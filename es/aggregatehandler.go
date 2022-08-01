@@ -6,7 +6,7 @@ import (
 )
 
 type aggregateHandler struct {
-	cfg *AggregateConfig
+	fn EntityFunc
 }
 
 func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error {
@@ -17,8 +17,9 @@ func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error
 
 	id := cmd.GetAggregateId()
 	replay := IsReplayCommand(cmd)
+	entity := a.fn(id)
 
-	aggregate, err := unit.Load(ctx, &a.cfg.EntityOptions, id, DataLoadForce(replay))
+	aggregate, err := unit.Load(ctx, entity, id, DataLoadForce(replay))
 	if err != nil {
 		return err
 	}
@@ -42,9 +43,9 @@ func (a *aggregateHandler) HandleCommand(ctx context.Context, cmd Command) error
 }
 
 // NewAggregateHandler creates the commandhandler
-func NewAggregateHandler(cfg *AggregateConfig) CommandHandler {
+func NewAggregateHandler(fn EntityFunc) CommandHandler {
 	handler := &aggregateHandler{
-		cfg: cfg,
+		fn: fn,
 	}
 	return handler
 }

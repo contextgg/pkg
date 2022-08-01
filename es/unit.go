@@ -24,7 +24,7 @@ type Unit interface {
 	Dispatch(ctx context.Context, cmds ...Command) error
 
 	// Load will load the entity from the database.
-	Load(ctx context.Context, entityOptions *EntityOptions, id string, dataOptions ...DataLoadOption) (Entity, error)
+	Load(ctx context.Context, entity Entity, id string, dataOptions ...DataLoadOption) (Entity, error)
 
 	// Save will save the entity to the database.
 	Save(ctx context.Context, entity Entity) error
@@ -102,10 +102,16 @@ func (u *unit) Dispatch(ctx context.Context, cmds ...Command) error {
 	return u.cli.HandleCommands(ctx, cmds...)
 }
 
-func (u *unit) Load(ctx context.Context, entityOptions *EntityOptions, id string, dataOptions ...DataLoadOption) (Entity, error) {
+func (u *unit) Load(ctx context.Context, entity Entity, id string, dataOptions ...DataLoadOption) (Entity, error) {
+	entityOptions, err := u.cli.GetEntityOptions(entity)
+	if err != nil {
+		return nil, err
+	}
+
 	db := u.Db()
 	data := NewData(db)
 	dataStore := NewDataStore(data, entityOptions)
+
 	return dataStore.Load(ctx, id, dataOptions...)
 }
 

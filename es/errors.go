@@ -17,6 +17,8 @@ var (
 	ErrCreatingAggregate = errors.New("Issue create aggregate")
 	// ErrVersionMismatch when the command's version doesn't match the aggregate
 	ErrVersionMismatch = errors.New("Version mismatch")
+	// ErrInvalidCommand occurs when the command type is not valid.
+	ErrInvalidCommand = errors.New("Invalid command")
 )
 
 // ApplyEventError is when an event could not be applied. It contains the error

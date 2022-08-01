@@ -92,7 +92,16 @@ type AggregateConfig struct {
 	sync.RWMutex
 	EntityOptions
 
+	handler  CommandHandler
 	commands []Command
+}
+
+func (cfg *AggregateConfig) Handler(h CommandHandler) *AggregateConfig {
+	cfg.Lock()
+	defer cfg.Unlock()
+
+	cfg.handler = h
+	return cfg
 }
 
 func (cfg *AggregateConfig) Commands(cmds ...Command) *AggregateConfig {
