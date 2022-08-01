@@ -25,7 +25,7 @@ type client struct {
 	entities        []Entity
 	entityOptions   map[reflect.Type]*EntityOptions
 	commandHandlers map[reflect.Type]CommandHandler
-	eventHandlers   map[reflect.Type]EventHandler
+	eventHandlers   map[reflect.Type][]EventHandler
 }
 
 func (c *client) Unit(ctx context.Context) (Unit, error) {
@@ -41,7 +41,7 @@ func (c *client) Initialize(ctx context.Context) error {
 		handler := NewSagaHandler(c, saga)
 		for _, evt := range saga.events {
 			t := types.GetElemType(evt)
-			c.eventHandlers[t] = handler
+			c.eventHandlers[t] = append(c.eventHandlers[t], handler)
 		}
 	}
 
@@ -106,12 +106,14 @@ func (c *client) HandleCommands(ctx context.Context, cmds ...Command) error {
 func (c *client) HandleEvents(ctx context.Context, evts ...events.Event) error {
 	for _, evt := range evts {
 		t := types.GetElemType(evt.Data)
-		h, ok := c.eventHandlers[t]
+		all, ok := c.eventHandlers[t]
 		if !ok {
 			return nil
 		}
-		if err := h.HandleEvent(ctx, evt); err != nil {
-			return err
+		for _, h := range all {
+			if err := h.HandleEvent(ctx, evt); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -137,7 +139,7 @@ func NewClient(cfg Config, conn Conn) (Client, error) {
 		conn:            conn,
 		entityOptions:   map[reflect.Type]*EntityOptions{},
 		commandHandlers: map[reflect.Type]CommandHandler{},
-		eventHandlers:   map[reflect.Type]EventHandler{},
+		eventHandlers:   map[reflect.Type][]EventHandler{},
 	}
 
 	ctx := context.Background()

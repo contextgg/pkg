@@ -30,7 +30,12 @@ func SetupDomain() es.Config {
 		Aggregate(aggregates.NewLineItem)
 
 	cfg.
-		Saga(sagas.NewCounter()).
+		Saga(sagas.NewDescription()).
+		Events(
+			&eventdata.DemoCreated{},
+		)
+	cfg.
+		Saga(sagas.NewDescription2()).
 		Events(
 			&eventdata.DemoCreated{},
 		)

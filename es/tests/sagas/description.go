@@ -10,10 +10,10 @@ import (
 	"github.com/contextgg/pkg/es/tests/eventdata"
 )
 
-type counter struct {
+type description struct {
 }
 
-func (s *counter) Run(ctx context.Context, event events.Event) ([]es.Command, error) {
+func (s *description) Run(ctx context.Context, event events.Event) ([]es.Command, error) {
 	switch d := event.Data.(type) {
 	case *eventdata.DemoCreated:
 		return s.runDemoCreated(ctx, event, d)
@@ -21,14 +21,7 @@ func (s *counter) Run(ctx context.Context, event events.Event) ([]es.Command, er
 	return nil, nil
 }
 
-func (s *counter) runDemoCreated(ctx context.Context, event events.Event, data *eventdata.DemoCreated) ([]es.Command, error) {
-	// agg, err := s.entityStore.Load(ctx, s.name, event.AggregateId)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// log.Printf("Agg %v", agg)
-
+func (s *description) runDemoCreated(ctx context.Context, event events.Event, data *eventdata.DemoCreated) ([]es.Command, error) {
 	return es.ReturnCommands(&commands.AddDescription{
 		BaseCommand: es.BaseCommand{
 			AggregateId: event.AggregateId,
@@ -37,6 +30,6 @@ func (s *counter) runDemoCreated(ctx context.Context, event events.Event, data *
 	})
 }
 
-func NewCounter() es.Saga {
-	return &counter{}
+func NewDescription() es.Saga {
+	return &description{}
 }
