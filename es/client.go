@@ -108,8 +108,9 @@ func (c *client) HandleEvents(ctx context.Context, evts ...events.Event) error {
 		t := types.GetElemType(evt.Data)
 		all, ok := c.eventHandlers[t]
 		if !ok {
-			return nil
+			continue
 		}
+
 		for _, h := range all {
 			if err := h.HandleEvent(ctx, evt); err != nil {
 				return err
