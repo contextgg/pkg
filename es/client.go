@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/contextgg/pkg/events"
 	"github.com/contextgg/pkg/types"
@@ -16,6 +17,7 @@ type Client interface {
 	HandleCommands(ctx context.Context, cmds ...Command) error
 	HandleEvents(ctx context.Context, events ...events.Event) error
 	PublishEvents(ctx context.Context, events ...events.Event) error
+	ReplayCommand(ctx context.Context, aggregateType string, aggregateId string) error
 }
 
 type client struct {
@@ -26,6 +28,7 @@ type client struct {
 	entityOptions   map[reflect.Type]*EntityOptions
 	commandHandlers map[reflect.Type]CommandHandler
 	eventHandlers   map[reflect.Type][]EventHandler
+	replayHandlers  map[string]CommandHandler
 }
 
 func (c *client) Unit(ctx context.Context) (Unit, error) {
@@ -61,6 +64,9 @@ func (c *client) Initialize(ctx context.Context) error {
 			t := types.GetElemType(cmd)
 			c.commandHandlers[t] = handler
 		}
+
+		aggregateType := strings.ToLower(t.Name())
+		c.replayHandlers[aggregateType] = handler
 	}
 
 	db := c.conn.Db()
@@ -134,6 +140,11 @@ func (c *client) PublishEvents(ctx context.Context, evts ...events.Event) error 
 	return nil
 }
 
+func (c *client) ReplayCommand(ctx context.Context, aggregateType string, aggregateId string) error {
+	srv := NewReplayService(c.replayHandlers)
+	return srv.One(ctx, strings.ToLower(aggregateType), aggregateId)
+}
+
 func NewClient(cfg Config, conn Conn) (Client, error) {
 	cli := &client{
 		cfg:             cfg,
@@ -141,6 +152,7 @@ func NewClient(cfg Config, conn Conn) (Client, error) {
 		entityOptions:   map[reflect.Type]*EntityOptions{},
 		commandHandlers: map[reflect.Type]CommandHandler{},
 		eventHandlers:   map[reflect.Type][]EventHandler{},
+		replayHandlers:  map[string]CommandHandler{},
 	}
 
 	ctx := context.Background()
