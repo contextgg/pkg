@@ -77,8 +77,8 @@ func newRequest(server string, r *http.Request) (*http.Request, error) {
 	for _, h := range hopHeaders {
 		req.Header.Del(h)
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("X-Forwarded-Host", r.Host)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-Host", r.Host)
 
 	return req, nil
 }
