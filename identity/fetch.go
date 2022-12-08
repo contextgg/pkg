@@ -78,7 +78,6 @@ func newRequest(server string, r *http.Request) (*http.Request, error) {
 		req.Header.Del(h)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Forwarded-Host", r.Host)
 
 	return req, nil
 }
